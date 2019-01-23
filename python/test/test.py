@@ -52,10 +52,10 @@ assert(prim(0) == matrix([0.,0.,0.])).all()
 
 #testing bezier with constraints
 c = curve_constraints();
-c.init_vel = matrix([0.,1.,1.]);
-c.end_vel  = matrix([0.,1.,1.]);
-c.init_acc = matrix([0.,1.,-1.]);
-c.end_acc  = matrix([0.,100.,1.]);
+c.init_vel = matrix([0.,1.,1.]).transpose();
+c.end_vel  = matrix([0.,1.,1.]).transpose();
+c.init_acc = matrix([0.,1.,-1.]).transpose();
+c.end_acc  = matrix([0.,100.,1.]).transpose();
 
 waypoints = matrix([[1.,2.,3.],[4.,5.,6.]]).transpose()
 a = bezier(waypoints,c)
@@ -73,7 +73,7 @@ assert((a.derivate(0.4,0) == a(0.4)).all())
 a.derivate(0.4,2)
 
 #testing exact_cubic function
-a = exact_cubic(waypoints, time_waypoints)
+a = exact_cubic(waypoints, time_waypoints.transpose())
 a.min()
 a.max()
 a(0.4)
@@ -88,13 +88,13 @@ c.init_acc;
 c.end_acc;
 
 
-c.init_vel = matrix([0.,1.,1.]);
-c.end_vel  = matrix([0.,1.,1.]);
-c.init_acc = matrix([0.,1.,1.]);
-c.end_acc  = matrix([0.,1.,1.]);
+c.init_vel = matrix([0.,1.,1.]).transpose();
+c.end_vel  = matrix([0.,1.,1.]).transpose();
+c.init_acc = matrix([0.,1.,1.]).transpose();
+c.end_acc  = matrix([0.,1.,1.]).transpose();
 
-a = spline_deriv_constraint (waypoints, time_waypoints)
-a = spline_deriv_constraint (waypoints, time_waypoints, c)
+a = spline_deriv_constraint (waypoints, time_waypoints.transpose())
+a = spline_deriv_constraint (waypoints, time_waypoints.transpose(), c)
 
 #converting bezier to polynom
 
