@@ -72,43 +72,104 @@ class varBezier:
                 mat = self.bezier.waypoints().A[:, varId*3:varId*3+3]
                 vec = self.bezier.waypoints().b[:, varId]
                 return mat, vec
+                
+        def matrixFormWaypoints(self, varId):
+                assert(varId >= 0)
+                mat, vec = self.waypoints(varId)
+                #~ resmat = zeros([mat.shape[0],mat.shape[0]])
+                resvec = zeros(3)
+                for i in range(0, mat.shape[0]/3, 1):
+                        #~ resmat[i*3:i*3+3, i*3:i*3+3] = mat[i*3:i*3+3, :]
+                        resvec += vec[i*3:i*3+3]
+                return mat.transpose(), resvec
              
         
                 
-        def toBezier3(self, x_list):
-                assert(len(x_list)*3 == self.bezier.waypoints().b.shape[0])
+        def toBezier3(self, x):
                 wps = []
                 for i in range(self.bezier.nbWaypoints):
-                        mat, vec = self.waypoints(i)
-                        pt = array([0.,0.,0.])
-                        for j, el in enumerate(x_list):
-                                pt+=toPoint(el,mat,vec,j)
-                        wps += [pt]
+                        mat, vec = self.matrixFormWaypoints(i) 
+                        wps += [mat.dot(x) + vec]
+                        #~ mat, vec = self.waypoints(varId)
+                #~ assert(len(x_list)*3 == self.bezier.waypoints().b.shape[0])
+                #~ wps = []
+                #~ for i in range(self.bezier.nbWaypoints):
+                        #~ mat, vec = self.waypoints(i)
+                        #~ pt = array([0.,0.,0.])
+                        #~ for j, el in enumerate(x_list):
+                                #~ pt+=toPoint(el,mat,vec,j)
+                        #~ wps += [pt]
                 return bezier(array(wps).transpose(),self.bezier.max())
+
+#~ def square(mat, vec):
+        #~ resmat = zeros([mat.shape[0],mat.shape[0]])
+        #~ resvec = zeros(3)
+        #~ for i in range(0, mat.shape[0], 3):
+                #~ resmat[i*3:i*3+3, i*3:i*3+3] = mat[i*3:i*3+3, :]
+                #~ resvec += [i*3:i*3+3]
+        
+
+def segmentConstraint(varBez, a, b, wpIndex, constraintVarIndex, totalAddVarConstraints):
+        mat, vec = varBez.matrixFormWaypoints(wpIndex)
+        vec = b - vec   
+        resmat = zeros([mat.shape[0],mat.shape[1]+totalAddVarConstraints])
+        resmat[:,:mat.shape[1]]=mat
+        resmat[:, mat.shape[1]+constraintVarIndex-1]= b-a
+        return resmat, vec
+        #mat X' + vec = (alpha) a + (1 - alpha) b = alpha(a-b) + b
+        #[mat, (a-b)] [X, alpha]' + b 
                       
+
+#try to solve the qp with one segment constraint
+
+testConstant = varBezier([array([1,2,3]),"","",array([4,5,5])], 1.)
+#~ testConstant = varBezier([""], 1.)
+subs = testConstant.split([0.4])
+
+dim = testConstant.bezier.nbWaypoints
+
+a = array([2.,3.,2.])
+b = array([0.,0.,1.])
+
+c0 = segmentConstraint(subs[0],a,b,dim-1,1,1)
 
 #~ a=varBezier([array([1,2,3]),""], 1.)
 #~ subs = a.split([0.4])
+from qp import solve_lp
+q = zeros(c0[0].shape[1])
+q[-1] = 1
+G = zeros([2,q.shape[0]])
+h = zeros(2)
+G[0,-1] =  1 ; h[0]=1.
+G[1,-1] = -1 ; h[1]=0.
+C = c0[0]
+d = c0[1]
+res = solve_lp(q, G=G, h=h, C=c0[0], d=c0[1])
+x_list = [res[i:i+3] for i in range(dim)]
+test =testConstant.toBezier3(res[:-1])
+testsub =subs[0].toBezier3(res[:-1])
+
+#~ testConstant=varBezier([array([1,2,3]),"","",array([4,5,5])], 1.)
+#~ subs = testConstant.split([0.4])
+
+#~ zero3 = [zeros(3) for _ in range(3)]
+#~ ones3 = [ones(3) for _ in range(3)]
+#~ ones4 = ones(12)
+#~ #check that t works
+
+#~ b = testConstant.toBezier3(ones4)
+
+#~ b_sub0 =  subs[0].toBezier3(ones4)
+#~ b_sub1 =  subs[1].toBezier3(ones4)
+
+#~ for i in range(10):
+        #~ t = i / 10. * 0.4
+        #~ assert(abs(b_sub0(t) - b(t)) <= __EPS).all()
+#~ for i in range(10):
+        #~ t = i / 10. * 0.6
+        #~ assert(abs(b_sub1(t) - b(t + 0.4)) <= __EPS).all()
 
 
-testConstant=varBezier([array([1,2,3]),"",array([4,5,5])], 1.)
-subs = testConstant.split([0.4])
-
-zero3 = [zeros(3) for _ in range(3)]
-ones3 = [ones(3) for _ in range(3)]
-#check that t works
-
-b = testConstant.toBezier3(ones3)
-
-b_sub0 =  subs[0].toBezier3(ones3)
-b_sub1 =  subs[1].toBezier3(ones3)
-
-for i in range(10):
-        t = i / 10. * 0.4
-        assert(abs(b_sub0(t) - b(t)) <= __EPS).all()
-for i in range(10):
-        t = i / 10. * 0.6
-        assert(abs(b_sub1(t) - b(t + 0.4)) <= __EPS).all()
 
 
 #get points
