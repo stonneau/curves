@@ -137,7 +137,7 @@ c0 = segmentConstraint(subs[0],a,b,dim-1,1,1)
 #~ subs = a.split([0.4])
 from qp import solve_lp
 q = zeros(c0[0].shape[1])
-q[-1] = 1
+q[-1] = -1
 G = zeros([2,q.shape[0]])
 h = zeros(2)
 G[0,-1] =  1 ; h[0]=1.
@@ -174,5 +174,29 @@ testsub =subs[0].toBezier3(res[:-1])
 
 #get points
 #~ beziersub1wps = 
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+step = 1000.
+points =  np.array([(test(i/step)[0][0],test(i/step)[1][0]) for i in range(int(step))])
+
+#~ points = np.array([(0, 1), (2, 4), (3, 1), (9, 3)])
+# get x and y vectors
+x = points[:,0]
+y = points[:,1]
+
+# calculate polynomial
+#~ z = np.polyfit(x, y, 2)
+#~ f = np.poly1d(z)
+
+# calculate new x's and y's
+#~ x_new = np.linspace(x[0], x[-1], 50)
+#~ y_new = f(x_new)
+
+#~ plt.plot(x,y,'o', x, y)
+plt.plot(x,y)
+#~ plt.xlim([x[0]-10, x[-1] + 1 ])
+plt.show()
 
 
