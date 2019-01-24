@@ -271,12 +271,20 @@ def computeTrajectory(bezVar, splits, filename = uuid.uuid4().hex.upper()[0:6]):
                         color = colors[i]
                         test = bez.toBezier3(res[:])
                         plotBezier(test, color)
+                plt.savefig(filename+str(idxFile))
+                #plot subs control points
+                for i, bez in enumerate(subs):
+                        color = colors[i]
+                        test = bez.toBezier3(res[:])
+                        plotBezier(test, color)
                         plotControlPoints(test, color)
+                plt.savefig("subcp"+filename+str(idxFile))
                 final = bezVar.toBezier3(res[:])
                 plotControlPoints(final, "black")
-                plt.savefig(filename+str(idxFile))
+                plt.savefig("cp"+filename+str(idxFile))
                 idxFile += 1
-                plt.show()
+                #~ plt.show()
+                plt.close()
                 
                 return final
         except ValueError:
@@ -302,7 +310,6 @@ def genSplit(numCurves):
 def gen():
         testConstant = genBezierInput(5)
         splits = genSplit(4)
-        print "splits", splits
         return computeTrajectory(testConstant,splits)   
 
 res = None
