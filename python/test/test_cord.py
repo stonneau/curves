@@ -180,7 +180,7 @@ from convex_hull import *
 
 lines0 = genFromLine(lines0[0], 5, [[0,6],[0,7]])
 
-from qp import solve_lp
+from qp import solve_lp, quadprog_solve_qp
 
 def getRightMostLine(ptList):
         pt1 = array([0.,0.,0.])
@@ -227,6 +227,38 @@ import uuid; uuid.uuid4().hex.upper()[0:6]
 #~ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
         #~ return ''.join(np.random.choice(string.ascii_uppercase + string.digits) for _ in range(size))
 
+
+
+def accelerationcost(bezVar):
+        # derivate twice for acceleration
+        acc = bezVar.bezier.compute_derivate(2)
+        #~ prim = acc.compute_primitive(1)
+        
+        
+        
+        hacc = varBezier(); hacc.bezier = acc
+        wps_i=[[],[],[]]
+        for i in range(3): #integrate for each axis
+                for j in range(acc.nbWaypoints):
+                        A_i = hacc.matrixFormWaypoints(j)[0][i,:].reshape([1,-1])
+                        b_i = hacc.matrixFormWaypoints(j)[1][i]
+                        wps_i[i] += [(A_i.transpose().dot(A_i), b_i*b_i) ]
+        # now integrate each bezier curve
+        for i, wps in enumerate(wps_i):
+              wps_i[i] = compute_primitive(wps)
+        
+        resmat = wps_i[0][-1][0]; resvec = wps_i[0][-1][1]
+        for i in range(1,3):
+                resmat = resmat + wps_i[i][-1][0]
+                resvec = resvec + wps_i[i][-1][1]
+        return (resmat, resvec)
+
+        
+        #~ endwp = hprim.matrixFormWaypoints(prim.nbWaypoints-1)
+        
+        #~ return hprim
+        # integral is given by difference of end control points of primitive
+
 def computeTrajectory(bezVar, splits, save, filename = uuid.uuid4().hex.upper()[0:6]):
         global idxFile
         colors=['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
@@ -235,6 +267,8 @@ def computeTrajectory(bezVar, splits, save, filename = uuid.uuid4().hex.upper()[
         line_current = [array([1.,1.,0.]), array([0.,1.,0.])]
         
         #qp vars
+        P = accelerationcost(bezVar)[0]; P = P + identity(P.shape[0]) * 0.0001
+        #~ print "P", P
         q = zeros(3*bezVar.bezier.nbWaypoints)
         q[-1] = -1
         G = zeros([2,q.shape[0]])
@@ -264,7 +298,8 @@ def computeTrajectory(bezVar, splits, save, filename = uuid.uuid4().hex.upper()[
                 plotPoly  (lines, color)
         C = None; d = None
         try:
-                res = solve_lp(q, G=G, h=h, C=C, d=d)
+                #~ res = solve_lp(q, G=G, h=h, C=C, d=d)
+                res = quadprog_solve_qp(P, q, G=G, h=h, C=C, d=d)
                 #plot bezier
                 for i, bez in enumerate(subs):
                         color = colors[i]
@@ -294,6 +329,39 @@ def computeTrajectory(bezVar, splits, save, filename = uuid.uuid4().hex.upper()[
         except ValueError:
                 #~ pass
                 plt.close()
+     
+     
+#~ bezier_curve_t compute_primitive(const std::size_t order) const
+    #~ {
+        #~ if(order == 0) return *this;
+        #~ num_t new_degree = (num_t)(degree_+1);
+        #~ t_point_t n_wp;
+        #~ point_t current_sum =  point_t::Zero(Dim);
+        #~ // recomputing waypoints q_i from derivative waypoints p_i. q_0 is the given constant.
+        #~ // then q_i = (sum( j = 0 -> j = i-1) p_j) /n+1
+        #~ n_wp.push_back(current_sum);
+        #~ for(typename t_point_t::const_iterator pit =  pts_.begin(); pit != pts_.end(); ++pit)
+        #~ {
+            #~ current_sum += *pit;
+            #~ n_wp.push_back(current_sum / new_degree);
+        #~ }
+        #~ bezier_curve_t integ(n_wp.begin(), n_wp.end(),T_, mult_T_*T_);
+        #~ return integ.compute_primitive(order-1);
+    #~ }
+    
+def compute_primitive(wps):
+        new_degree = (len(wps)-1+1)
+        current_sum = [zeros(wps[0][0].shape),0]
+        n_wp = [(current_sum[0],0.)]
+        for wp in wps:
+                current_sum[0] = current_sum[0] + wp[0]
+                current_sum[1] = current_sum[1] + wp[1]
+                #~ print "current_sum[0]", current_sum[0].shape
+                #~ print "current_sum[1]", current_sum[1]
+                n_wp +=[(current_sum[0]/new_degree, current_sum[1]/new_degree)]
+        return n_wp
+        
+        
         
                 
 def genBezierInput(numvars = 3):
@@ -312,12 +380,14 @@ def genSplit(numCurves):
 
 
 def gen(save = False):
-        testConstant = genBezierInput(5)
+        testConstant = genBezierInput(4)
         splits = genSplit(4)
-        return computeTrajectory(testConstant,splits, save)   
+        return computeTrajectory(testConstant,splits, save), testConstant
 
 res = None
 for i in range(1000):
         res = gen()
+        if res[0] != None:
+                break
 
 
