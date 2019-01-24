@@ -1,6 +1,6 @@
 from spline import *
 
-from numpy import matrix, array, zeros, ones
+from numpy import matrix, array, zeros, ones, diag, cross
 from numpy.linalg import norm
 
 __EPS = 1e-6
@@ -115,36 +115,103 @@ def segmentConstraint(varBez, a, b, wpIndex, constraintVarIndex, totalAddVarCons
         resmat = zeros([mat.shape[0],mat.shape[1]+totalAddVarConstraints])
         resmat[:,:mat.shape[1]]=mat
         resmat[:, mat.shape[1]+constraintVarIndex-1]= b-a
-        return resmat, vec
+        return (resmat, vec)
         #mat X' + vec = (alpha) a + (1 - alpha) b = alpha(a-b) + b
         #[mat, (a-b)] [X, alpha]' + b 
-                      
+
+from numpy import vstack, identity
+def concat(m1,m2):
+        if (type(m1) == type(None)):
+                return m2
+                
+        return vstack([m1,m2]).reshape([-1,m2.shape[-1]])
+        
+def concatvec(m1,m2):
+        if (type(m1) == type(None)):
+                return m2
+        return array(m1.tolist()+m2.tolist())
+
+def lineConstraint(varBez, C, d, totalAddVarConstraints):
+        resmat = None
+        resvec = None
+        for wpIndex in range(varBez.bezier.nbWaypoints):
+                mat, vec = varBez.matrixFormWaypoints(wpIndex)
+                mat = C.dot(mat)
+                vec = d - C.dot(vec)
+                print "mat ", mat
+                print "vec ", vec
+                print "d ", vec
+                #~ print "resmat ", resmat.shape
+                print "mat ", mat.shape
+                resmat = concat(resmat, mat)
+                resvec = concatvec(resvec, vec)
+        augmented = zeros([resmat.shape[0],resmat.shape[1]+totalAddVarConstraints])
+        augmented[:,:resmat.shape[1]]=resmat
+        return (augmented, resvec)
 
 #try to solve the qp with one segment constraint
 
-testConstant = varBezier([array([1,2,3]),"","",array([4,5,5])], 1.)
+testConstant = varBezier([array([1,2,0]),"","",array([4,5,0])], 1.)
 #~ testConstant = varBezier([""], 1.)
 subs = testConstant.split([0.4])
 
 dim = testConstant.bezier.nbWaypoints
 
-a = array([2.,3.,2.])
-b = array([0.,0.,1.])
+a = array([2.,3.,0.])
+b = array([0.,0.,0.])
 
-c0 = segmentConstraint(subs[0],a,b,dim-1,1,1)
+def inequality(v, n): 
+	#the plan has for equation ax + by + cz = d, with a b c coordinates of the normal
+	#inequality is then ax + by +cz -d <= 0 
+	# last var is v because we need it
+	return [n[0], n[1], n[2], np.array(v).dot(np.array(n)) + __EPS]
 
+# constraint is left of line
+lines0 = [[array([1.,0.,0.]), array([1.,4.,0.])], [array([1.,1.5,0.]), array([2.,1.5,0.])]]
+def getLineFromSegment(line):
+        a = line[0]; b = line[1]; c = a.copy() ; c[2] = 1.
+        normal = cross((b-a),(c-a))
+        normal /= norm(normal)
+        # get inequality
+        dire = b - a
+        coeff = normal
+        rhs = a.dot(normal)
+        #~ signs = [1., -1., -1.]
+        #~ rhs = 0.
+        #~ for i in range(3):
+                #~ if dire[i] != 0.:
+                        #~ coeff[i] = signs[i]/dire[i]
+                        #~ rhs += coeff[i] * a[i] *(-signs[i])
+        
+        #~ coeff = array([1. / dire[0], -1. / dire[1], -1. / dire[2]])
+        print "coeff", coeff
+        #~ print "rhs", rhs
+        return (coeff, array([rhs]))
+
+eq0 = segmentConstraint(subs[0],a,b,dim-1,1,1)
+matineq0 = None; vecineq0 = None
+for line in lines0:
+        (mat,vec) = getLineFromSegment(line)
+        (mat,vec) = lineConstraint(subs[0], mat,vec,1)
+        (matineq0, vecineq0) = (concat(matineq0,mat), concatvec(vecineq0,vec))
+ineq0 = (matineq0, vecineq0)
+
+#~ lineConstraint(varBez, C, d, totalAddVarConstraints)
 #~ a=varBezier([array([1,2,3]),""], 1.)
 #~ subs = a.split([0.4])
 from qp import solve_lp
-q = zeros(c0[0].shape[1])
+q = zeros(eq0[0].shape[1])
 q[-1] = -1
 G = zeros([2,q.shape[0]])
 h = zeros(2)
 G[0,-1] =  1 ; h[0]=1.
 G[1,-1] = -1 ; h[1]=0.
-C = c0[0]
-d = c0[1]
-res = solve_lp(q, G=G, h=h, C=c0[0], d=c0[1])
+G = vstack([G,ineq0[0]])
+h = concatvec(h,ineq0[1])
+C = eq0[0]
+d = eq0[1]
+#~ C = None; d = None
+res = solve_lp(q, G=G, h=h, C=C, d=d)
 x_list = [res[i:i+3] for i in range(dim)]
 test =testConstant.toBezier3(res[:-1])
 testsub =subs[0].toBezier3(res[:-1])
@@ -178,13 +245,32 @@ testsub =subs[0].toBezier3(res[:-1])
 import numpy as np
 import matplotlib.pyplot as plt
 
-step = 1000.
-points =  np.array([(test(i/step)[0][0],test(i/step)[1][0]) for i in range(int(step))])
+step = 100.
+points1 =  np.array([(test(i/step*0.4)[0][0],test(i/step*0.4)[1][0]) for i in range(int(step))])
+points2 =  np.array([(test(i/step*0.6+0.4)[0][0],test(i/step*0.6+0.4)[1][0]) for i in range(int(step))])
 
+step = 10.
+for line in lines0:
+        print "one line"
+        a_0 = line[0]
+        b_0 = line[1]
+        pointsline =  np.array([ a_0 * i / step + b_0 * (1. - i / step) for i in range(int(step))])
+        xl = pointsline[:,0]
+        yl = pointsline[:,1]
+        print "heo"
+        print "xl", xl
+        print "yl", yl
+        plt.plot(xl,yl,'b')
 #~ points = np.array([(0, 1), (2, 4), (3, 1), (9, 3)])
 # get x and y vectors
-x = points[:,0]
-y = points[:,1]
+x = points1[:,0]
+y = points1[:,1]
+x2 = points2[:,0]
+y2 = points2[:,1]
+
+
+#~ for line in lines:
+        
 
 # calculate polynomial
 #~ z = np.polyfit(x, y, 2)
@@ -194,8 +280,10 @@ y = points[:,1]
 #~ x_new = np.linspace(x[0], x[-1], 50)
 #~ y_new = f(x_new)
 
-#~ plt.plot(x,y,'o', x, y)
-plt.plot(x,y)
+plt.plot(x,y,'b')
+plt.plot(x2,y2,'r')
+
+#~ plt.plot(x,y)
 #~ plt.xlim([x[0]-10, x[-1] + 1 ])
 plt.show()
 
