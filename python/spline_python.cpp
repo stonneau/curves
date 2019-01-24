@@ -443,7 +443,7 @@ LinearBezierVector* split(const bezier_linear_control_t& self,  const vectorX_t&
         std::pair<bezier_linear_control_t, bezier_linear_control_t> pairsplit = current.split(tmp-current_time);
         res->beziers_.push_back(pairsplit.first);
         current = pairsplit.second;
-        current_time += tmp;
+        current_time += tmp-current_time;
     }
     res->beziers_.push_back(current);
     return res;

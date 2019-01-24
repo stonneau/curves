@@ -174,104 +174,113 @@ def getLineFromSegment(line):
         return (coeff, array([rhs]))
 
 eq0 = segmentConstraint(subs[0],a,b,dim-1,1,1)
-matineq0 = None; vecineq0 = None
+
 
 from convex_hull import *
 
 lines0 = genFromLine(lines0[0], 5, [[0,6],[0,7]])
 
-for line in lines0:
-        (mat,vec) = getLineFromSegment(line)
-        (mat,vec) = lineConstraint(subs[0], mat,vec,1)
-        (matineq0, vecineq0) = (concat(matineq0,mat), concatvec(vecineq0,vec))
-ineq0 = (matineq0, vecineq0)
-
-#~ lineConstraint(varBez, C, d, totalAddVarConstraints)
-#~ a=varBezier([array([1,2,3]),""], 1.)
-#~ subs = a.split([0.4])
 from qp import solve_lp
-q = zeros(eq0[0].shape[1])
-q[-1] = -1
-G = zeros([2,q.shape[0]])
-h = zeros(2)
-G[0,-1] =  1 ; h[0]=1.
-G[1,-1] = -1 ; h[1]=0.
-G = vstack([G,ineq0[0]])
-h = concatvec(h,ineq0[1])
-C = eq0[0]
-d = eq0[1]
-#~ C = None; d = None
-res = solve_lp(q, G=G, h=h, C=C, d=d)
-x_list = [res[i:i+3] for i in range(dim)]
-test =testConstant.toBezier3(res[:-1])
-testsub =subs[0].toBezier3(res[:-1])
 
-#~ testConstant=varBezier([array([1,2,3]),"","",array([4,5,5])], 1.)
-#~ subs = testConstant.split([0.4])
+def getRightMostLine(ptList):
+        pt1 = array([0.,0.,0.])
+        pt2 = array([0.,0.,0.])
+        for pt in ptList:
+                if pt[0] > pt1[0]:
+                       pt1 =  pt
+                elif pt[0] > pt2[0]:
+                       pt2 =  pt
+        if pt1[1] < pt2[1]:
+                return [pt2,pt1]
+        else:
+                return [pt1,pt2]
 
-#~ zero3 = [zeros(3) for _ in range(3)]
-#~ ones3 = [ones(3) for _ in range(3)]
-#~ ones4 = ones(12)
-#~ #check that t works
-
-#~ b = testConstant.toBezier3(ones4)
-
-#~ b_sub0 =  subs[0].toBezier3(ones4)
-#~ b_sub1 =  subs[1].toBezier3(ones4)
-
-#~ for i in range(10):
-        #~ t = i / 10. * 0.4
-        #~ assert(abs(b_sub0(t) - b(t)) <= __EPS).all()
-#~ for i in range(10):
-        #~ t = i / 10. * 0.6
-        #~ assert(abs(b_sub1(t) - b(t + 0.4)) <= __EPS).all()
-
-
-
-
-#get points
-#~ beziersub1wps = 
-
-import numpy as np
-import matplotlib.pyplot as plt
-
-step = 100.
-points1 =  np.array([(test(i/step*0.4)[0][0],test(i/step*0.4)[1][0]) for i in range(int(step))])
-points2 =  np.array([(test(i/step*0.6+0.4)[0][0],test(i/step*0.6+0.4)[1][0]) for i in range(int(step))])
-
-#~ lines0 = genFromLine(lines0[0], 50, [[0,6],[0,7]])
-#~ step = 10.
-for line in lines0:
-        a_0 = line[0]
-        b_0 = line[1]
-        pointsline =  np.array([ a_0 * i / step + b_0 * (1. - i / step) for i in range(int(step))])
-        xl = pointsline[:,0]
-        yl = pointsline[:,1]
-        plt.plot(xl,yl,'b')
-#~ points = np.array([(0, 1), (2, 4), (3, 1), (9, 3)])
-# get x and y vectors
-x = points1[:,0]
-y = points1[:,1]
-x2 = points2[:,0]
-y2 = points2[:,1]
-
-
-#~ for line in lines:
+def plotBezier(bez, color):
+        step = 100.
+        points1 =  np.array([(bez(i/step*bez.max())[0][0],bez(i/step*bez.max())[1][0]) for i in range(int(step))])
+        x = points1[:,0]
+        y = points1[:,1]
+        plt.plot(x,y,color)
         
+def plotPoly(lines, color):
+        step = 100.
+        for line in lines:
+                a_0 = line[0]
+                b_0 = line[1]
+                pointsline =  np.array([ a_0 * i / step + b_0 * (1. - i / step) for i in range(int(step))])
+                xl = pointsline[:,0]
+                yl = pointsline[:,1]
+                plt.plot(xl,yl,color)
 
-# calculate polynomial
-#~ z = np.polyfit(x, y, 2)
-#~ f = np.poly1d(z)
+def computeTrajectory(bezVar, splits):
+        colors=['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
+        subs = bezVar.split(splits)
+        #generate random constraints for each line
+        line_current = [array([1.,1.,0.]), array([0.,1.,0.])]
+        
+        #qp vars
+        q = zeros(3*bezVar.bezier.nbWaypoints)
+        q[-1] = -1
+        G = zeros([2,q.shape[0]])
+        h = zeros(2)
+        G[0,-1] =  1 ; h[0]=1.
+        G[1,-1] = -1 ; h[1]=0.
+        
+        dimExtra = 0
+        
+        for i, bez in enumerate(subs):
+                color = colors[i]
+                init_points = []
+                if i == 0:
+                        init_points = [bezVar.waypoints()[1][:3,0][:2]]
+                if i == len(subs)-1:
+                        init_points = [bezVar.waypoints()[1][-3:,-1][:2]]
+                lines, ptList = genFromLine(line_current, 5, [[0,5],[0,5]],init_points)
+                matineq0 = None; vecineq0 = None
+                for line in lines:
+                        (mat,vec) = getLineFromSegment(line)
+                        (mat,vec) = lineConstraint(bez, mat,vec,dimExtra)
+                        (matineq0, vecineq0) = (concat(matineq0,mat), concatvec(vecineq0,vec))
+                ineq  = (matineq0, vecineq0)
+                G = vstack([G,ineq[0]])
+                h = concatvec(h,ineq[1])
+                line_current = getRightMostLine(ptList)
+                plotPoly  (lines, color)
+        C = None; d = None
+        try:
+                res = solve_lp(q, G=G, h=h, C=C, d=d)
+                #plot bezier
+                for i, bez in enumerate(subs):
+                        color = colors[i]
+                        test = bez.toBezier3(res[:])
+                        plotBezier(test, color)
+                plt.show()
+        except:
+                plt.close()
+                return
+                
+def genBezierInput(numvars = 3):
+        valDep = array([np.random.uniform(0., 1.), np.random.uniform(0.,5.), 0.])
+        valEnd = array([np.random.uniform(5., 10.), np.random.uniform(0.,5.), 0.])
+        return varBezier([valDep,"","","",valEnd], 1.)
+        
+def genSplit(numCurves):
+        splits = []
+        lastval = np.random.uniform(0., 1.)
+        for i in range(numCurves):
+                splits += [lastval]
+                lastval += np.random.uniform(0., 1.)
+        return [el / lastval for el in splits[:-1]]
+                
 
-# calculate new x's and y's
-#~ x_new = np.linspace(x[0], x[-1], 50)
-#~ y_new = f(x_new)
 
-plt.plot(x,y,'b')
-plt.plot(x2,y2,'r')
+def gen():
+        testConstant = genBezierInput(5.)
+        splits = genSplit(5)
+        print "splits", splits
+        computeTrajectory(testConstant,splits)   
 
-#~ plt.plot(x,y)
-#~ plt.xlim([x[0]-10, x[-1] + 1 ])
-plt.show()
+for i in range(10):
+        gen()
 
 
