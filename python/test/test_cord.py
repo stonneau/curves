@@ -138,11 +138,6 @@ def lineConstraint(varBez, C, d, totalAddVarConstraints):
                 mat, vec = varBez.matrixFormWaypoints(wpIndex)
                 mat = C.dot(mat)
                 vec = d - C.dot(vec)
-                print "mat ", mat
-                print "vec ", vec
-                print "d ", vec
-                #~ print "resmat ", resmat.shape
-                print "mat ", mat.shape
                 resmat = concat(resmat, mat)
                 resvec = concatvec(resvec, vec)
         augmented = zeros([resmat.shape[0],resmat.shape[1]+totalAddVarConstraints])
@@ -167,7 +162,7 @@ def inequality(v, n):
 	return [n[0], n[1], n[2], np.array(v).dot(np.array(n)) + __EPS]
 
 # constraint is left of line
-lines0 = [[array([1.,0.,0.]), array([1.,4.,0.])], [array([1.,1.5,0.]), array([2.,1.5,0.])]]
+lines0 = [[array([1.1,0.,0.]), array([1.1,4.,0.])], [array([1.,1.5,0.]), array([2.,1.5,0.])]]
 def getLineFromSegment(line):
         a = line[0]; b = line[1]; c = a.copy() ; c[2] = 1.
         normal = cross((b-a),(c-a))
@@ -176,20 +171,15 @@ def getLineFromSegment(line):
         dire = b - a
         coeff = normal
         rhs = a.dot(normal)
-        #~ signs = [1., -1., -1.]
-        #~ rhs = 0.
-        #~ for i in range(3):
-                #~ if dire[i] != 0.:
-                        #~ coeff[i] = signs[i]/dire[i]
-                        #~ rhs += coeff[i] * a[i] *(-signs[i])
-        
-        #~ coeff = array([1. / dire[0], -1. / dire[1], -1. / dire[2]])
-        print "coeff", coeff
-        #~ print "rhs", rhs
         return (coeff, array([rhs]))
 
 eq0 = segmentConstraint(subs[0],a,b,dim-1,1,1)
 matineq0 = None; vecineq0 = None
+
+from convex_hull import *
+
+lines0 = genFromLine(lines0[0], 5, [[0,6],[0,7]])
+
 for line in lines0:
         (mat,vec) = getLineFromSegment(line)
         (mat,vec) = lineConstraint(subs[0], mat,vec,1)
@@ -249,17 +239,14 @@ step = 100.
 points1 =  np.array([(test(i/step*0.4)[0][0],test(i/step*0.4)[1][0]) for i in range(int(step))])
 points2 =  np.array([(test(i/step*0.6+0.4)[0][0],test(i/step*0.6+0.4)[1][0]) for i in range(int(step))])
 
-step = 10.
+#~ lines0 = genFromLine(lines0[0], 50, [[0,6],[0,7]])
+#~ step = 10.
 for line in lines0:
-        print "one line"
         a_0 = line[0]
         b_0 = line[1]
         pointsline =  np.array([ a_0 * i / step + b_0 * (1. - i / step) for i in range(int(step))])
         xl = pointsline[:,0]
         yl = pointsline[:,1]
-        print "heo"
-        print "xl", xl
-        print "yl", yl
         plt.plot(xl,yl,'b')
 #~ points = np.array([(0, 1), (2, 4), (3, 1), (9, 3)])
 # get x and y vectors
