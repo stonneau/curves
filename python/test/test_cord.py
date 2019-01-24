@@ -200,19 +200,35 @@ def plotBezier(bez, color):
         points1 =  np.array([(bez(i/step*bez.max())[0][0],bez(i/step*bez.max())[1][0]) for i in range(int(step))])
         x = points1[:,0]
         y = points1[:,1]
-        plt.plot(x,y,color)
+        plt.plot(x,y,color,linewidth=2.0)
+        
+def plotControlPoints(bez, color):
+        wps = bez.waypoints()
+        wps = np.array([wps[:2,i] for i in range(wps.shape[1]) ])
+        x = wps[:,0]
+        y = wps[:,1]
+        plt.scatter(x,y,color=color)
+        #~ [plt.plot(el[0],el[1]) for el in points1]
+        
         
 def plotPoly(lines, color):
-        step = 100.
+        step = 1000.
         for line in lines:
                 a_0 = line[0]
                 b_0 = line[1]
                 pointsline =  np.array([ a_0 * i / step + b_0 * (1. - i / step) for i in range(int(step))])
                 xl = pointsline[:,0]
                 yl = pointsline[:,1]
-                plt.plot(xl,yl,color)
+                plt.plot(xl,yl,color,linewidth=0.5)
 
-def computeTrajectory(bezVar, splits):
+idxFile = 0
+import string
+import uuid; uuid.uuid4().hex.upper()[0:6]
+#~ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+        #~ return ''.join(np.random.choice(string.ascii_uppercase + string.digits) for _ in range(size))
+
+def computeTrajectory(bezVar, splits, filename = uuid.uuid4().hex.upper()[0:6]):
+        global idxFile
         colors=['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
         subs = bezVar.split(splits)
         #generate random constraints for each line
@@ -249,20 +265,29 @@ def computeTrajectory(bezVar, splits):
         C = None; d = None
         try:
                 res = solve_lp(q, G=G, h=h, C=C, d=d)
+                print "success"
                 #plot bezier
                 for i, bez in enumerate(subs):
                         color = colors[i]
                         test = bez.toBezier3(res[:])
                         plotBezier(test, color)
+                        plotControlPoints(test, color)
+                final = bezVar.toBezier3(res[:])
+                plotControlPoints(final, "black")
+                plt.savefig(filename+str(idxFile))
+                idxFile += 1
                 plt.show()
-        except:
+                
+                return final
+        except ValueError:
+                #~ pass
                 plt.close()
-                return
+        
                 
 def genBezierInput(numvars = 3):
         valDep = array([np.random.uniform(0., 1.), np.random.uniform(0.,5.), 0.])
         valEnd = array([np.random.uniform(5., 10.), np.random.uniform(0.,5.), 0.])
-        return varBezier([valDep,"","","",valEnd], 1.)
+        return varBezier([valDep]+["" for _ in range(numvars)]+[valEnd], 1.)
         
 def genSplit(numCurves):
         splits = []
@@ -275,12 +300,13 @@ def genSplit(numCurves):
 
 
 def gen():
-        testConstant = genBezierInput(5.)
-        splits = genSplit(5)
+        testConstant = genBezierInput(5)
+        splits = genSplit(4)
         print "splits", splits
-        computeTrajectory(testConstant,splits)   
+        return computeTrajectory(testConstant,splits)   
 
-for i in range(10):
-        gen()
+res = None
+for i in range(1000):
+        res = gen()
 
 
