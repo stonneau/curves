@@ -227,7 +227,7 @@ import uuid; uuid.uuid4().hex.upper()[0:6]
 #~ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
         #~ return ''.join(np.random.choice(string.ascii_uppercase + string.digits) for _ in range(size))
 
-def computeTrajectory(bezVar, splits, filename = uuid.uuid4().hex.upper()[0:6]):
+def computeTrajectory(bezVar, splits, save, filename = uuid.uuid4().hex.upper()[0:6]):
         global idxFile
         colors=['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
         subs = bezVar.split(splits)
@@ -265,26 +265,30 @@ def computeTrajectory(bezVar, splits, filename = uuid.uuid4().hex.upper()[0:6]):
         C = None; d = None
         try:
                 res = solve_lp(q, G=G, h=h, C=C, d=d)
-                print "success"
                 #plot bezier
                 for i, bez in enumerate(subs):
                         color = colors[i]
                         test = bez.toBezier3(res[:])
                         plotBezier(test, color)
-                plt.savefig(filename+str(idxFile))
+                if save:
+                        plt.savefig(filename+str(idxFile))
                 #plot subs control points
                 for i, bez in enumerate(subs):
                         color = colors[i]
                         test = bez.toBezier3(res[:])
                         plotBezier(test, color)
                         plotControlPoints(test, color)
-                plt.savefig("subcp"+filename+str(idxFile))
+                if save:
+                        plt.savefig("subcp"+filename+str(idxFile))
                 final = bezVar.toBezier3(res[:])
                 plotControlPoints(final, "black")
-                plt.savefig("cp"+filename+str(idxFile))
+                if save:
+                        plt.savefig("cp"+filename+str(idxFile))
                 idxFile += 1
-                #~ plt.show()
-                plt.close()
+                if save:
+                        plt.close()
+                else:
+                        plt.show()
                 
                 return final
         except ValueError:
@@ -307,10 +311,10 @@ def genSplit(numCurves):
                 
 
 
-def gen():
+def gen(save = False):
         testConstant = genBezierInput(5)
         splits = genSplit(4)
-        return computeTrajectory(testConstant,splits)   
+        return computeTrajectory(testConstant,splits, save)   
 
 res = None
 for i in range(1000):
