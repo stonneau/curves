@@ -32,9 +32,9 @@ struct linear_variable{
     matrix_t A_;
     point_t b_;
 
-    linear_variable(): A_(matrix_t::Identity()), b_(point_t::Zero()){}
-    linear_variable(const matrix_t& A, const point_t& b):A_(A),b_(b) {}
+    linear_variable(): A_(matrix_t::Identity()), b_(point_t::Zero()){} //variable
     linear_variable(const point_t& b):A_(matrix_t::Zero()),b_(b) {} // constant
+    linear_variable(const matrix_t& A, const point_t& b):A_(A),b_(b) {} //mixed
 
 
     linear_variable& operator+=(const linear_variable& w1)

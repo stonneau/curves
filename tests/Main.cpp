@@ -6,6 +6,7 @@
 #include "hpp/spline/helpers/effector_spline.h"
 #include "hpp/spline/helpers/effector_spline_rotation.h"
 #include "hpp/spline/bezier_polynom_conversion.h"
+#include "hpp/spline/optimization/linear_problem.h"
 
 #include <string>
 #include <iostream>
@@ -921,7 +922,335 @@ void BezierSplitCurve(bool& error){
     }
 }
 
+/**
+ * @brief BezierLinearProblemTests test the generation of linear / quadratic problems with
+ * variable control points bezier curves
+ * @param error
+ */
 
+using namespace spline::optimization;
+
+typedef curve_constraints<point_t> constraint_linear;
+typedef linear_variable<3, double> linear_variable_t;
+typedef variables<linear_variable_t> variables_t;
+typedef std::pair<std::size_t, std::size_t >   pair_size_t;
+typedef std::pair<variables_t, pair_size_t > var_pair_t;
+
+var_pair_t setup_control_points(const std::size_t degree,
+                          const constraint_flag flag,
+                          const point_t& initPos = point_t(),
+                          const point_t& endPos  = point_t(),
+                          const constraint_linear& constraints = constraint_linear())
+{
+    return setup_control_points<point_t, 3, double>(degree, flag, initPos, endPos, constraints);
+}
+
+enum vartype
+{
+    variable,
+    constant
+};
+
+bool isVar(const linear_variable_t& var)
+{
+    return var.A_ == linear_variable_t::matrix_t::Identity() &&
+           var.b_ == linear_variable_t::point_t::Zero();
+}
+
+bool isConstant(const linear_variable_t& var)
+{
+    return var.A_ == linear_variable_t::matrix_t::Zero() &&
+           var.b_ != linear_variable_t::point_t::Zero();
+}
+
+/*bool isMixed(const linear_variable_t& var)
+{
+    return var.A_ != linear_variable_t::matrix_t::Zero() &&
+           var.b_ != linear_variable_t::point_t::Zero();
+}*/
+
+bool checkValue(const linear_variable_t& var, const vartype vart)
+{
+    if (vart == constant)
+        return isConstant(var);
+    else
+        return isVar(var);
+}
+
+void checksequence(const variables_t& vars, vartype* expected,
+                   const std::string testname, bool& error)
+{
+    int i =0;
+    for(variables_t::CIT_var_t cit = vars.variables_.begin();
+        cit != vars.variables_.end(); ++cit, ++i)
+    {
+        if(! checkValue(*cit, expected[i]))
+        {
+            std::cout << "in test: " << testname << ": wrong type for variable at position " << i << std::endl;
+            error = true;
+        }
+    }
+}
+
+void checkNumVar(const variables_t& vars, const std::size_t expected,
+                 const std::string testname, bool& error)
+{
+    if(vars.variables_.size() != expected)
+    {
+        error = true;
+        std::cout << "incorrect number of variables in "
+                  << testname << "(" << expected << "," << vars.variables_.size() << ")" << std::endl;
+    }
+}
+
+void checkPair(const pair_size_t pair, const std::size_t start_index, const std::size_t num_vars,
+                 const std::string testname, bool& error)
+{
+    if(pair.first != start_index)
+    {
+        error = true;
+        std::cout << "incorrect starting index for variablesin "
+                  << testname << "(" << start_index << "," << pair.first << ")" << std::endl;
+    }
+    if(pair.second != num_vars)
+    {
+        error = true;
+        std::cout << "incorrect number of identified variablesin "
+                  << testname << "(" << num_vars << "," << pair.second << ")" << std::endl;
+    }
+}
+
+void BezierLinearProblemsetup_control_pointsNoConstraint(bool& error){
+    constraint_flag flag = optimization::NONE;
+    var_pair_t res_no_constraints = setup_control_points(5, flag);
+    variables_t& vars = res_no_constraints.first;
+    vartype exptecdvars [] = {variable,variable,variable,variable,variable,variable};
+    checkNumVar(vars, 6, "setup_control_pointsNoConstraint", error);
+    checksequence(vars,exptecdvars,"setup_control_pointsNoConstraint", error);
+}
+
+constraint_linear makeConstraint()
+{
+    point_t init_pos = point_t(1.,1.,1.);
+    constraint_linear cl;
+    init_pos*=2;
+    cl.init_vel = init_pos;
+    init_pos*=2;
+    cl.init_acc = init_pos;
+    init_pos*=2;
+    cl.end_acc = init_pos;
+    init_pos*=2;
+    cl.end_vel = init_pos;
+    return cl;
+}
+
+void BezierLinearProblemsetup_control_pointsVarCombinatorialInit(bool& error){
+    constraint_flag flag = optimization::INIT_POS;
+    point_t init_pos = point_t(1.,1.,1.);
+    var_pair_t res = setup_control_points(5, flag,init_pos);
+    variables_t& vars = res.first;
+    vartype exptecdvars [] = {constant,variable,variable,variable,variable,variable};
+    checkNumVar(vars, 6, "VarCombinatorialInit", error);
+    checksequence(vars,exptecdvars,"VarCombinatorialInit", error);
+    checkPair(res.second, 1, 5, "VarCombinatorialInit", error);
+
+    constraint_linear constraints = makeConstraint();
+    flag = INIT_POS | INIT_VEL;
+    res = setup_control_points(5, flag,init_pos,point_t(),constraints);
+    vars = res.first;
+    vartype exptecdvar1 [] = {constant,constant,variable,variable,variable,variable};
+    checkNumVar(vars, 6, "VarCombinatorialInit", error);
+    checksequence(vars,exptecdvar1,"VarCombinatorialInit", error);
+    checkPair(res.second, 2, 4, "VarCombinatorialInit", error);
+
+    flag = INIT_POS | INIT_VEL | INIT_ACC;
+    res = setup_control_points(5, flag,init_pos,point_t(),constraints);
+    vars = res.first;
+    vartype exptecdvar2 [] = {constant,constant,constant,variable,variable,variable};
+    checkNumVar(vars, 6, "VarCombinatorialInit", error);
+    checksequence(vars,exptecdvar2,"VarCombinatorialInit", error);
+    checkPair(res.second, 3, 3, "VarCombinatorialInit", error);
+
+    flag = INIT_VEL;
+    res = setup_control_points(5, flag,init_pos,point_t(),constraints);
+    vars = res.first;
+    vartype exptecdvar3 [] = {variable,variable,variable,variable,variable,variable};
+    checkNumVar(vars, 6, "VarCombinatorialInit", error);
+    checksequence(vars,exptecdvar3,"VarCombinatorialInit", error);
+    checkPair(res.second, 0, 6, "VarCombinatorialInit", error);
+
+    flag = INIT_ACC;
+    res = setup_control_points(5, flag,init_pos,point_t(),constraints);
+    vars = res.first;
+    vartype exptecdvar4 [] = {variable,variable,variable,variable,variable,variable};
+    checkNumVar(vars, 6, "VarCombinatorialInit", error);
+    checksequence(vars,exptecdvar4,"VarCombinatorialInit", error);
+    checkPair(res.second, 0, 6, "VarCombinatorialInit", error);
+
+    flag = INIT_ACC | INIT_VEL;
+    res = setup_control_points(5, flag,init_pos,point_t(),constraints);
+    vars = res.first;
+    vartype exptecdvar5 [] = {variable,variable,variable,variable,variable,variable};
+    checkNumVar(vars, 6, "VarCombinatorialInit", error);
+    checksequence(vars,exptecdvar5,"VarCombinatorialInit", error);
+    checkPair(res.second, 0, 6, "VarCombinatorialInit", error);
+
+
+    bool err = true;
+    try
+    {
+        flag = INIT_POS | INIT_VEL;
+        res = setup_control_points(1, flag,init_pos,point_t(),constraints);
+    }
+    catch(...)
+    {
+        err = false;
+    }
+    if(err)
+    {
+        error = true;
+        std::cout << "exception should be raised when degree of bezier curve is not high enough to handle constraints " << std::endl;
+    }
+}
+
+void BezierLinearProblemsetup_control_pointsVarCombinatorialEnd(bool& error){
+    constraint_flag flag = optimization::END_POS;
+    point_t init_pos = point_t(1.,1.,1.);
+    var_pair_t res = setup_control_points(5, flag,init_pos);
+    variables_t& vars = res.first;
+    vartype exptecdvars [] = {variable,variable,variable,variable,variable,constant};
+    checkNumVar(vars, 6, "VarCombinatorialEnd", error);
+    checksequence(vars,exptecdvars,"VarCombinatorialEnd", error);
+    checkPair(res.second, 0, 5, "VarCombinatorialEnd", error);
+
+    constraint_linear constraints = makeConstraint();
+    flag = END_POS | END_VEL;
+    res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar1 [] = {variable,variable,variable,variable,constant,constant};
+    checkNumVar(vars, 6, "VarCombinatorialEnd", error);
+    checksequence(vars,exptecdvar1,"VarCombinatorialEnd", error);
+    checkPair(res.second, 0, 4, "VarCombinatorialEnd", error);
+
+    flag = END_POS | END_VEL | END_ACC;
+    res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar2 [] = {variable,variable,variable,constant,constant,constant};
+    checkNumVar(vars, 6, "VarCombinatorialEnd", error);
+    checksequence(vars,exptecdvar2,"VarCombinatorialEnd", error);
+    checkPair(res.second, 0, 3, "VarCombinatorialEnd", error);
+
+    flag = END_VEL;
+    res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar3 [] = {variable,variable,variable,variable,variable,variable};
+    checkNumVar(vars, 6, "VarCombinatorialEnd", error);
+    checksequence(vars,exptecdvar3,"VarCombinatorialEnd", error);
+    checkPair(res.second, 0, 6, "VarCombinatorialEnd", error);
+
+    flag = END_ACC;
+    res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar4 [] = {variable,variable,variable,variable,variable,variable};
+    checkNumVar(vars, 6, "VarCombinatorialEnd", error);
+    checksequence(vars,exptecdvar4,"VarCombinatorialEnd", error);
+    checkPair(res.second, 0, 6, "VarCombinatorialEnd", error);
+
+    flag = END_ACC | END_VEL;
+    res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar5 [] = {variable,variable,variable,variable,variable,variable};
+    checkNumVar(vars, 6, "VarCombinatorialEnd", error);
+    checksequence(vars,exptecdvar5,"VarCombinatorialEnd", error);
+    checkPair(res.second, 0, 6, "VarCombinatorialEnd", error);
+
+
+    bool err = true;
+    try
+    {
+        flag = END_ACC | END_VEL;
+        res = setup_control_points(1, flag,init_pos,point_t(),constraints);
+    }
+    catch(...)
+    {
+        err = false;
+    }
+    if(err)
+    {
+        error = true;
+        std::cout << "exception should be raised when degree of bezier curve is not high enough to handle constraints " << std::endl;
+    }
+}
+
+
+void BezierLinearProblemsetup_control_pointsVarCombinatorialMix(bool& error){
+    constraint_flag flag = END_POS | INIT_POS;
+    point_t init_pos = point_t(1.,1.,1.);
+    var_pair_t res = setup_control_points(5, flag,init_pos);
+    variables_t& vars = res.first;
+    vartype exptecdvars [] = {constant,variable,variable,variable,variable,constant};
+    checkNumVar(vars, 6, "VarCombinatorialMix", error);
+    checksequence(vars,exptecdvars,"VarCombinatorialMix", error);
+    checkPair(res.second, 1, 4, "VarCombinatorialMix", error);
+
+    constraint_linear constraints = makeConstraint();
+    flag = END_POS | END_VEL | INIT_VEL | INIT_POS;
+    res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar1 [] = {constant,constant,variable,variable,constant,constant};
+    checkNumVar(vars, 6, "VarCombinatorialMix", error);
+    checksequence(vars,exptecdvar1,"VarCombinatorialMix", error);
+    checkPair(res.second, 2, 2, "VarCombinatorialMix", error);
+
+    flag = END_POS | END_VEL | END_ACC | INIT_VEL | INIT_POS;
+    res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar2 [] = {constant,constant,variable,constant,constant,constant};
+    checkNumVar(vars, 6, "VarCombinatorialMix", error);
+    checksequence(vars,exptecdvar2,"VarCombinatorialMix", error);
+    checkPair(res.second, 2, 1, "VarCombinatorialMix", error);
+
+    flag = ALL;
+    res = setup_control_points(6, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar3 [] = {constant,constant,constant,variable,constant,constant,constant};
+    checkNumVar(vars, 7, "VarCombinatorialMix", error);
+    checksequence(vars,exptecdvar3,"VarCombinatorialMix", error);
+    checkPair(res.second, 3, 1, "VarCombinatorialMix", error);
+
+    flag = END_VEL | END_ACC | INIT_VEL;
+    res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar4 [] = {variable,variable,variable,variable,variable,variable};
+    checkNumVar(vars, 6, "VarCombinatorialMix", error);
+    checksequence(vars,exptecdvar4,"VarCombinatorialMix", error);
+    checkPair(res.second, 0, 6, "VarCombinatorialMix", error);
+
+    flag = END_VEL | INIT_VEL;
+    res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar5 [] = {variable,variable,variable,variable,variable,variable};
+    checkNumVar(vars, 6, "VarCombinatorialMix", error);
+    checksequence(vars,exptecdvar5,"VarCombinatorialMix", error);
+    checkPair(res.second, 0, 6, "VarCombinatorialMix", error);
+
+
+    bool err = true;
+    try
+    {
+        flag = ALL;
+        res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    }
+    catch(...)
+    {
+        err = false;
+    }
+    if(err)
+    {
+        error = true;
+        std::cout << "exception should be raised when degree of bezier curve is not high enough to handle constraints " << std::endl;
+    }
+}
 
 int main(int /*argc*/, char** /*argv[]*/)
 {
@@ -946,6 +1275,10 @@ int main(int /*argc*/, char** /*argv[]*/)
     BezierToPolynomConversionTest(error);
     BezierEvalDeCasteljau(error);
     BezierSplitCurve(error);
+    BezierLinearProblemsetup_control_pointsNoConstraint(error);
+    BezierLinearProblemsetup_control_pointsVarCombinatorialInit(error);
+    BezierLinearProblemsetup_control_pointsVarCombinatorialEnd(error);
+    BezierLinearProblemsetup_control_pointsVarCombinatorialMix(error);
     if(error)
 	{
         std::cout << "There were some errors\n";
