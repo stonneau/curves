@@ -87,11 +87,8 @@ std::pair<variables<linear_variable<Dim, Numeric> >, std::pair<std::size_t, std:
     }
     const std::size_t first_variable_idx = i;
     // variables
-    if(numControlPoints > 3 )
-    {
-        for(; i< std::size_t(std::max(0,int(numControlPoints)-3)); ++i)
-            variables_.push_back(var_t());
-    }
+    for(; i + 3< numControlPoints; ++i)
+        variables_.push_back(var_t());
     //end constraints
     if(flag & END_POS)
     {
