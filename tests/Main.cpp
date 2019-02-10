@@ -935,6 +935,7 @@ typedef linear_variable<3, double> linear_variable_t;
 typedef variables<linear_variable_t> variables_t;
 typedef std::pair<std::size_t, std::size_t >   pair_size_t;
 typedef std::pair<variables_t, pair_size_t > var_pair_t;
+typedef problem_data<point_t, 3, double> problem_data_t;
 
 var_pair_t setup_control_points(const std::size_t degree,
                           const constraint_flag flag,
@@ -942,7 +943,9 @@ var_pair_t setup_control_points(const std::size_t degree,
                           const point_t& endPos  = point_t(),
                           const constraint_linear& constraints = constraint_linear())
 {
-    return setup_control_points<point_t, 3, double>(degree, flag, initPos, endPos, constraints);
+    problem_data_t pData = setup_control_points<point_t, 3, double>(degree, flag, initPos, endPos, constraints);
+    return std::make_pair(pData.variables_,
+                          std::make_pair(pData.startVariableIndex, pData.numVariables));
 }
 
 enum vartype

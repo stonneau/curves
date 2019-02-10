@@ -31,6 +31,17 @@ enum constraint_flag{
     NONE      = 0x100
   };
 
+template<typename Point, int Dim, typename Numeric>
+struct problem_data
+{
+    typedef linear_variable<Dim, Numeric>     var_t;
+    typedef variables<var_t>    vars_t;
+
+    vars_t variables_;
+    std::size_t numVariables;
+    std::size_t startVariableIndex;
+};
+
 inline std::size_t num_active_constraints(const constraint_flag& flag)
 {
     long lValue = (long)(flag);
@@ -44,7 +55,7 @@ inline std::size_t num_active_constraints(const constraint_flag& flag)
 }
 
 template<typename Point, int Dim, typename Numeric>
-std::pair<variables<linear_variable<Dim, Numeric> >, std::pair<std::size_t, std::size_t > > setup_control_points(const std::size_t degree,
+problem_data<Point, Dim, Numeric> setup_control_points(const std::size_t degree,
                           const constraint_flag flag,
                           const Point& initPos = Point(),
                           const Point& endPos  = Point(),
@@ -54,6 +65,7 @@ std::pair<variables<linear_variable<Dim, Numeric> >, std::pair<std::size_t, std:
     typedef Point   point_t;
     typedef linear_variable<Dim, Numeric>     var_t;
     typedef variables<var_t>    vars_t;
+    typedef problem_data<Point, Dim, Numeric> problem_data_t;
 
     const std::size_t numControlPoints = degree +1;
     if (num_active_constraints(flag) >= numControlPoints)
@@ -129,8 +141,11 @@ std::pair<variables<linear_variable<Dim, Numeric> >, std::pair<std::size_t, std:
     assert(numControlPoints == variables_.size());
 
 
-    const std::size_t numVars = numControlPoints-numConstants;
-    return std::make_pair(res, std::make_pair(first_variable_idx, numVars));
+    problem_data_t problemData;
+    problemData.variables_ = res;
+    problemData.numVariables = numControlPoints-numConstants;
+    problemData.startVariableIndex =first_variable_idx;
+    return problemData;
 }
 
 inline constraint_flag operator~(constraint_flag a)
