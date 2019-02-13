@@ -21,6 +21,8 @@
 
 #include <iostream>
 
+#include <Eigen/StdVector>
+
 namespace spline
 {
 /// \class BezierCurve
@@ -359,7 +361,7 @@ struct bezier_curve : public curve_abc<Time, Numeric, Dim, Safe, Point>
     public:
     static bezier_curve_t zero(const time_t T=1.)
     {
-        std::vector<point_t> ts;
+        std::vector<point_t, Eigen::aligned_allocator<point_t> > ts;
         ts.push_back(point_t::Zero(Dim));
         return bezier_curve_t(ts.begin(), ts.end(),T);
     }

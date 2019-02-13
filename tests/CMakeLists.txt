@@ -1,3 +1,3 @@
 ADD_UNIT_TEST(
-				spline_tests Main.cpp
+    spline_tests Main.cpp
 )

@@ -1,12 +1,6 @@
 
-#include "hpp/spline/exact_cubic.h"
-#include "hpp/spline/bezier_curve.h"
-#include "hpp/spline/polynom.h"
-#include "hpp/spline/spline_deriv_constraint.h"
-#include "hpp/spline/helpers/effector_spline.h"
-#include "hpp/spline/helpers/effector_spline_rotation.h"
-#include "hpp/spline/bezier_polynom_conversion.h"
-#include "hpp/spline/optimization/linear_problem.h"
+
+#include "load_problem.h"
 
 #include <string>
 #include <iostream>
@@ -16,22 +10,6 @@ using namespace std;
 
 namespace spline
 {
-typedef Eigen::Vector3d point_t;
-typedef std::vector<point_t,Eigen::aligned_allocator<point_t> >  t_point_t;
-typedef polynom  <double, double, 3, true, point_t, t_point_t> polynom_t;
-typedef exact_cubic <double, double, 3, true, point_t> exact_cubic_t;
-typedef spline_deriv_constraint <double, double, 3, true, point_t> spline_deriv_constraint_t;
-typedef bezier_curve  <double, double, 3, true, point_t> bezier_curve_t;
-typedef spline_deriv_constraint_t::spline_constraints spline_constraints_t;
-typedef std::pair<double, point_t> Waypoint;
-typedef std::vector<Waypoint> T_Waypoint;
-
-
-typedef Eigen::Matrix<double,1,1> point_one;
-typedef polynom<double, double, 1, true, point_one> polynom_one;
-typedef exact_cubic   <double, double, 1, true, point_one> exact_cubic_one;
-typedef std::pair<double, point_one> WaypointOne;
-typedef std::vector<WaypointOne> T_WaypointOne;
 
 bool QuasiEqual(const double a, const double b, const float margin)
 {
@@ -861,7 +839,7 @@ void BezierSplitCurve(bool& error){
         //std::cout<<"build a random curve"<<std::endl;
         point_t a;
         std::vector<point_t> wps;
-        for(size_t j = 0 ; j <= n ; ++j){
+        for(size_t j = 0 ; j <= (std::size_t)(n) ; ++j){
             wps.push_back(randomPoint(-10.,10.));
         }
         double t = (rand()/(double)RAND_MAX )*(t_max-t_min) + t_min;
@@ -930,12 +908,6 @@ void BezierSplitCurve(bool& error){
 
 using namespace spline::optimization;
 
-typedef curve_constraints<point_t> constraint_linear;
-typedef linear_variable<3, double> linear_variable_t;
-typedef variables<linear_variable_t> variables_t;
-typedef std::pair<std::size_t, std::size_t >   pair_size_t;
-typedef std::pair<variables_t, pair_size_t > var_pair_t;
-typedef problem_data<point_t, 3, double> problem_data_t;
 
 var_pair_t setup_control_points(const std::size_t degree,
                           const constraint_flag flag,
@@ -1188,6 +1160,75 @@ void BezierLinearProblemsetup_control_pointsVarCombinatorialEnd(bool& error){
 
 void BezierLinearProblemsetup_control_pointsVarCombinatorialMix(bool& error){
     constraint_flag flag = END_POS | INIT_POS;
+    point_t init_pos = point_t(1.,1.,1.);
+    var_pair_t res = setup_control_points(5, flag,init_pos);
+    variables_t& vars = res.first;
+    vartype exptecdvars [] = {constant,variable,variable,variable,variable,constant};
+    checkNumVar(vars, 6, "VarCombinatorialMix", error);
+    checksequence(vars,exptecdvars,"VarCombinatorialMix", error);
+    checkPair(res.second, 1, 4, "VarCombinatorialMix", error);
+
+    constraint_linear constraints = makeConstraint();
+    flag = END_POS | END_VEL | INIT_VEL | INIT_POS;
+    res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar1 [] = {constant,constant,variable,variable,constant,constant};
+    checkNumVar(vars, 6, "VarCombinatorialMix", error);
+    checksequence(vars,exptecdvar1,"VarCombinatorialMix", error);
+    checkPair(res.second, 2, 2, "VarCombinatorialMix", error);
+
+    flag = END_POS | END_VEL | END_ACC | INIT_VEL | INIT_POS;
+    res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar2 [] = {constant,constant,variable,constant,constant,constant};
+    checkNumVar(vars, 6, "VarCombinatorialMix", error);
+    checksequence(vars,exptecdvar2,"VarCombinatorialMix", error);
+    checkPair(res.second, 2, 1, "VarCombinatorialMix", error);
+
+    flag = ALL;
+    res = setup_control_points(6, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar3 [] = {constant,constant,constant,variable,constant,constant,constant};
+    checkNumVar(vars, 7, "VarCombinatorialMix", error);
+    checksequence(vars,exptecdvar3,"VarCombinatorialMix", error);
+    checkPair(res.second, 3, 1, "VarCombinatorialMix", error);
+
+    flag = END_VEL | END_ACC | INIT_VEL;
+    res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar4 [] = {variable,variable,variable,variable,variable,variable};
+    checkNumVar(vars, 6, "VarCombinatorialMix", error);
+    checksequence(vars,exptecdvar4,"VarCombinatorialMix", error);
+    checkPair(res.second, 0, 6, "VarCombinatorialMix", error);
+
+    flag = END_VEL | INIT_VEL;
+    res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    vars = res.first;
+    vartype exptecdvar5 [] = {variable,variable,variable,variable,variable,variable};
+    checkNumVar(vars, 6, "VarCombinatorialMix", error);
+    checksequence(vars,exptecdvar5,"VarCombinatorialMix", error);
+    checkPair(res.second, 0, 6, "VarCombinatorialMix", error);
+
+
+    bool err = true;
+    try
+    {
+        flag = ALL;
+        res = setup_control_points(5, flag,init_pos,init_pos,constraints);
+    }
+    catch(...)
+    {
+        err = false;
+    }
+    if(err)
+    {
+        error = true;
+        std::cout << "exception should be raised when degree of bezier curve is not high enough to handle constraints " << std::endl;
+    }
+}
+
+void BezierLinearProblemInitInequalities(bool& error){
+    constraint_flag flag = INIT_POS | END_POS;
     point_t init_pos = point_t(1.,1.,1.);
     var_pair_t res = setup_control_points(5, flag,init_pos);
     variables_t& vars = res.first;
