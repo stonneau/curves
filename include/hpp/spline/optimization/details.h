@@ -28,8 +28,6 @@ struct problem_data
     ~problem_data() {if (bezier) delete bezier;}
 
     typedef linear_variable<Dim, Numeric>     var_t;
-    typedef Eigen::Matrix<Numeric, Eigen::Dynamic, Dim > matrix_dim_x_t;
-    typedef Eigen::Matrix<Numeric, Eigen::Dynamic, 1 >   vector_x_t;
     typedef bezier_curve<Numeric, Numeric, Dim, true,variables<linear_variable<Dim, Numeric> > > bezier_t;
 
     std::vector<var_t> variables_; // includes constant variables
@@ -37,7 +35,6 @@ struct problem_data
     std::size_t numControlPoints; // total number of variable (* DIM for total size)
     std::size_t startVariableIndex; //before that index, variables are constant
     std::size_t numStateConstraints;
-    matrix_dim_x_t ineqMatrix;
     bezier_t* bezier;
 };
 
@@ -53,8 +50,8 @@ inline std::size_t num_active_constraints(const constraint_flag& flag)
     return (flag & NONE) ? iCount-1 : iCount;
 }
 
-template < typename LinearVar, typename Variables>
-Variables fillWithZeros(const LinearVar& var, const std::size_t totalvar, const std::size_t i)
+template <typename LinearVar, typename Variables>
+Variables fill_with_zeros(const LinearVar& var, const std::size_t totalvar, const std::size_t i)
 {
     Variables res;
     std::vector<LinearVar>& vars = res.variables_;
@@ -67,13 +64,13 @@ Variables fillWithZeros(const LinearVar& var, const std::size_t totalvar, const 
 }
 
 template < typename Numeric, typename Bezier, typename LinearVar, typename Variables>
-Bezier* computeLinearControlPoints(const std::vector<LinearVar>& linearVars, const Numeric totalTime )
+Bezier* compute_linear_control_points(const std::vector<LinearVar>& linearVars, const Numeric totalTime)
 {
     std::vector<Variables> res;
     // now need to fill all this with zeros...
     std::size_t totalvar = linearVars.size();
     for (std::size_t i = 0; i < totalvar; ++i)
-        res.push_back( fillWithZeros<LinearVar, Variables>(linearVars[i],totalvar,i));
+        res.push_back( fill_with_zeros<LinearVar, Variables>(linearVars[i],totalvar,i));
     return new Bezier(res.begin(),res.end(), totalTime);
 }
 
@@ -167,7 +164,7 @@ problem_data<Point, Dim, Numeric> setup_control_points(const problem_definition<
     assert(numControlPoints == variables_.size());
 
 
-    problemData.bezier = computeLinearControlPoints<Numeric,
+    problemData.bezier = compute_linear_control_points<Numeric,
                                             bezier_curve<Numeric, Numeric, Dim, true,vars_t>,
                                             var_t, vars_t>(variables_,  pDef.totalTime);
     problemData.numControlPoints = numControlPoints;
@@ -222,14 +219,12 @@ void bezierWaypointsToMatrixForm(const std::size_t startVariableIndex, const std
             varit != variables.end(); ++varit)
                 vecCurrentWp +=  varit->b_;
         //assert(variables.begin() + startVariableIndex + numVariables <= variables.end());
-        int col = 0;
         // loop only through variables that are not constant
         // TODO??? allow to put constant everywhere ?
+        int col = 0;
         for(typename variables_t::CIT_var_t  varit = variables.begin() + startVariableIndex;
             varit != variables.begin() + startVariableIndex + numVariables; ++varit, col+=Dim)
-        {
-            matCurrentWp.block(0,col,Dim,Dim) =  varit->A_;
-        }
+                matCurrentWp.block(0,col,Dim,Dim) =  varit->A_;
         matrices.push_back(matCurrentWp);
         vectors.push_back(vecCurrentWp);
     }
@@ -240,7 +235,6 @@ std::vector<bezier_curve<Numeric, Numeric, Dim, true,
             variables<linear_variable<Dim, Numeric> > > >
 split(const problem_definition<Point, Dim, Numeric>& pDef, problem_data<Point, Dim, Numeric> & pData)
 {
-    typedef Numeric real;
     typedef linear_variable<Dim, Numeric> linear_variable_t;
     typedef variables<linear_variable_t> variables_t;
     typedef bezier_curve< Numeric, Numeric, Dim, true,variables_t> bezier_t;
@@ -249,8 +243,8 @@ split(const problem_definition<Point, Dim, Numeric>& pDef, problem_data<Point, D
     const Eigen::VectorXd& times = pDef.splitTimes_;
     T_bezier_t res;
     bezier_t& current = *pData.bezier;
-    real current_time = 0.;
-    real tmp;
+    Numeric current_time = 0.;
+    Numeric tmp;
     for(int i = 0; i < times.rows(); ++i)
     {
         tmp =times[i];
@@ -263,8 +257,6 @@ split(const problem_definition<Point, Dim, Numeric>& pDef, problem_data<Point, D
     return res;
 }
 
-
-// TODO assumes constant are inside constraints...
 template<typename Point, int Dim, typename Numeric>
 void initInequalityMatrix
 (const problem_definition<Point, Dim, Numeric>& pDef, problem_data<Point, Dim, Numeric> & pData,
@@ -273,16 +265,16 @@ void initInequalityMatrix
     typedef problem_definition<Point, Dim, Numeric> problem_definition_t;
     typedef typename problem_definition_t::matrix_x_t matrix_x_t;
     typedef typename problem_definition_t::vectorx_t vectorx_t;
-    typedef bezier_curve<Numeric, Numeric, Dim, true,
-            variables<linear_variable<Dim, Numeric> > > bezier_t;
-    typedef std::vector<bezier_t> T_bezier_t;
-    typedef typename T_bezier_t::const_iterator CIT_bezier_t;
     typedef Eigen::Matrix<Numeric, Dim, Eigen::Dynamic> matrix_dimx_t;
     typedef Eigen::Matrix<Numeric, Dim, 1> vector_dim_t;
     typedef std::vector<matrix_dimx_t, Eigen::aligned_allocator<matrix_dimx_t> > T_matrix_dimx_t;
     typedef std::vector<matrix_dimx_t, Eigen::aligned_allocator<vector_dim_t> > T_vector_dim_t;
     typedef typename T_matrix_dimx_t::const_iterator CIT_matrix_dimx_t;
     typedef typename T_vector_dim_t::const_iterator CIT_vector_dim_t;
+    typedef bezier_curve<Numeric, Numeric, Dim, true,
+            variables<linear_variable<Dim, Numeric> > > bezier_t;
+    typedef std::vector<bezier_t> T_bezier_t;
+    typedef typename T_bezier_t::const_iterator CIT_bezier_t;
 
     long cols =  pData.numVariables * Dim;
     long rows = compute_num_ineq_control_points<Point, Dim, Numeric>(pDef, pData);
