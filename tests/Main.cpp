@@ -1309,7 +1309,8 @@ void BezierLinearProblemsetupLoadProblem(bool& error)
 {
     problem_definition_t pDef = loadproblem(path+"test.pb");
     problem_data_t pData = setup_control_points<point_t, 3, double>(pDef);
-    initInequalityMatrix<point_t,3,double>(pDef,pData);
+    problem_t prob;
+    initInequalityMatrix<point_t,3,double>(pDef,pData,prob);
 }
 
 int main(int /*argc*/, char** /*argv[]*/)

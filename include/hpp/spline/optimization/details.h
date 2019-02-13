@@ -266,8 +266,9 @@ split(const problem_definition<Point, Dim, Numeric>& pDef, problem_data<Point, D
 
 // TODO assumes constant are inside constraints...
 template<typename Point, int Dim, typename Numeric>
-Eigen::Matrix<Numeric, Eigen::Dynamic, Eigen::Dynamic> initInequalityMatrix
-(const problem_definition<Point, Dim, Numeric>& pDef, problem_data<Point, Dim, Numeric> & pData)
+void initInequalityMatrix
+(const problem_definition<Point, Dim, Numeric>& pDef, problem_data<Point, Dim, Numeric> & pData,
+    problem<Point, Dim, Numeric>& prob)
 {
     typedef problem_definition<Point, Dim, Numeric> problem_definition_t;
     typedef typename problem_definition_t::matrix_x_t matrix_x_t;
@@ -286,8 +287,8 @@ Eigen::Matrix<Numeric, Eigen::Dynamic, Eigen::Dynamic> initInequalityMatrix
     long cols =  pData.numVariables * Dim;
     long rows = compute_num_ineq_control_points<Point, Dim, Numeric>(pDef, pData);
     //rows+= compute_num_ineq_state_constraints<Point, Dim, Numeric>(pDef, pData); // TODO
-    matrix_x_t ineqMatrix = matrix_x_t::Zero(rows,cols);
-    vectorx_t ineqVec = vectorx_t::Zero(rows);
+    prob.ineqMatrix = matrix_x_t::Zero(rows,cols);
+    prob.ineqVector = vectorx_t::Zero(rows);
 
     // compute sub-bezier curves
     T_bezier_t beziers = split<Point, Dim, Numeric>(pDef,pData);
@@ -311,14 +312,13 @@ Eigen::Matrix<Numeric, Eigen::Dynamic, Eigen::Dynamic> initInequalityMatrix
         for(CIT_matrix_dimx_t mdim_cit = matrices.begin();
             mdim_cit != matrices.end(); ++mdim_cit, ++vdim_cit)
         {
-            ineqMatrix.block(currentRowIdx, 0,cmit->rows(),cols)
+            prob.ineqMatrix.block(currentRowIdx, 0,cmit->rows(),cols)
                     = (*cmit)*(*mdim_cit) ; // constraint inequality for current bezier * expression of control point
-            ineqVec.segment(currentRowIdx,cmit->rows()) = *cvit - (*cmit)*(*vdim_cit) ;
+            prob.ineqVector.segment(currentRowIdx,cmit->rows()) = *cvit - (*cmit)*(*vdim_cit) ;
             currentRowIdx += cmit->rows();
         }
     }
     assert (rows == currentRowIdx); // we filled all the constraints
-    return ineqMatrix;
 }
 
 inline constraint_flag operator~(constraint_flag a)

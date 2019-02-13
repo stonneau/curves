@@ -47,6 +47,7 @@ typedef std::pair<std::size_t, std::size_t >   pair_size_t;
 typedef std::pair<T_linear_variable_t, pair_size_t > var_pair_t;
 typedef problem_data<point_t, 3, double> problem_data_t;
 typedef problem_definition<point_t, 3, double> problem_definition_t;
+typedef problem<point_t, 3, double> problem_t;
 
 
 #define MAXBUFSIZE  ((int) 1e6)
