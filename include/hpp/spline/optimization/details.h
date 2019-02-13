@@ -24,29 +24,21 @@ namespace  optimization
 template<typename Point, int Dim, typename Numeric>
 struct problem_data
 {
+     problem_data() : bezier(0){}
+    ~problem_data() {if (bezier) delete bezier;}
+
     typedef linear_variable<Dim, Numeric>     var_t;
-    typedef variables<var_t>    vars_t;    
     typedef Eigen::Matrix<Numeric, Eigen::Dynamic, Dim > matrix_dim_x_t;
     typedef Eigen::Matrix<Numeric, Eigen::Dynamic, 1 >   vector_x_t;
-    /*typedef Eigen::Matrix<Numeric, Dim, Eigen::Dynamic> matrix_t;
-    typedef Eigen::Matrix<Numeric, Dim, 1> vector_t;
-    typedef std::vector<matrix_t, Eigen::aligned_allocator<matrix_t> > T_matrix_t;
-    typedef std::vector<matrix_t, Eigen::aligned_allocator<vector_t> > T_vector_t;
-    typedef std::vector<T_matrix_t > TT_matrix_t;
-    typedef std::vector<T_vector_t > TT_vector_t;
-    typedef bezier_curve<Numeric, Numeric, Dim, true,
-            variables<linear_variable<Dim, Numeric> > > bezier_t;
-    typedef std::vector<bezier_t> T_bezier_t;*/
+    typedef bezier_curve<Numeric, Numeric, Dim, true,variables<linear_variable<Dim, Numeric> > > bezier_t;
 
-    vars_t variables_; // includes constant variables
+    std::vector<var_t> variables_; // includes constant variables
     std::size_t numVariables; // total number of variable (* DIM for total size)
     std::size_t numControlPoints; // total number of variable (* DIM for total size)
     std::size_t startVariableIndex; //before that index, variables are constant
     std::size_t numStateConstraints;
     matrix_dim_x_t ineqMatrix;
-    //TT_matrix_t controlPointsMatricesPerSplit;
-    //TT_vector_t controlPointsVectorsPerSplit;
-    //T_bezier_t  splitBeziers;
+    bezier_t* bezier;
 };
 
 inline std::size_t num_active_constraints(const constraint_flag& flag)
@@ -61,12 +53,33 @@ inline std::size_t num_active_constraints(const constraint_flag& flag)
     return (flag & NONE) ? iCount-1 : iCount;
 }
 
+template < typename LinearVar, typename Variables>
+Variables fillWithZeros(const LinearVar& var, const std::size_t totalvar, const std::size_t i)
+{
+    Variables res;
+    std::vector<LinearVar>& vars = res.variables_;
+    for (std::size_t idx = 0; idx < i; ++idx)
+        vars.push_back(LinearVar::Zero());
+    vars.push_back(var);
+    for (std::size_t idx = i+1; idx < totalvar; ++idx)
+        vars.push_back(LinearVar::Zero());
+    return res;
+}
+
+template < typename Numeric, typename Bezier, typename LinearVar, typename Variables>
+Bezier* computeLinearControlPoints(const std::vector<LinearVar>& linearVars, const Numeric totalTime )
+{
+    std::vector<Variables> res;
+    // now need to fill all this with zeros...
+    std::size_t totalvar = linearVars.size();
+    for (std::size_t i = 0; i < totalvar; ++i)
+        res.push_back( fillWithZeros<LinearVar, Variables>(linearVars[i],totalvar,i));
+    return new Bezier(res.begin(),res.end(), totalTime);
+}
+
+
 template<typename Point, int Dim, typename Numeric>
-problem_data<Point, Dim, Numeric> setup_control_points(const std::size_t degree,
-                          const constraint_flag flag,
-                          const Point& initPos = Point(),
-                          const Point& endPos  = Point(),
-                          const curve_constraints<Point>& constraints = curve_constraints<Point>())
+problem_data<Point, Dim, Numeric> setup_control_points(const problem_definition<Point, Dim, Numeric>& pDef)
 {
     typedef Numeric num_t;
     typedef Point   point_t;
@@ -74,33 +87,36 @@ problem_data<Point, Dim, Numeric> setup_control_points(const std::size_t degree,
     typedef variables<var_t>    vars_t;
     typedef problem_data<Point, Dim, Numeric> problem_data_t;
 
-    const std::size_t numControlPoints = degree +1;
+    const curve_constraints<Point>& constraints = pDef.curveConstraints;
+    const std::size_t& degree = pDef.degree;
+    const constraint_flag& flag = pDef.flag;
+
+    const std::size_t numControlPoints = pDef.degree +1;
     const std::size_t numActiveConstraints = num_active_constraints(flag);
     if (numActiveConstraints >= numControlPoints)
         throw std::runtime_error("In setup_control_points; too many constraints for the considered degree");
 
 
     problem_data_t problemData;
-    vars_t& res = problemData.variables_;
-    typename vars_t::T_var_t& variables_ = res.variables_;
+    typename vars_t::T_var_t& variables_ = problemData.variables_;
 
     std::size_t numConstants = 0;
     std::size_t i =0;
     if(flag & INIT_POS)
     {
-        variables_.push_back(var_t(initPos));
+        variables_.push_back(var_t(pDef.start));
         ++numConstants;
         ++i;
         if(flag & INIT_VEL)
         {
-            point_t vel = initPos + constraints.init_vel / (num_t)degree;
+            point_t vel = pDef.start + constraints.init_vel / (num_t)degree;
             variables_.push_back(var_t(vel));
             ++numConstants;
             ++i;
             if(flag & INIT_ACC)
             {
                 point_t acc = constraints.init_acc / (num_t)(degree * (degree-1))
-                        + 2* vel- initPos;;
+                        + 2* vel- pDef.start;;
                 variables_.push_back(var_t(acc));
                 ++numConstants;
                 ++i;
@@ -116,11 +132,11 @@ problem_data<Point, Dim, Numeric> setup_control_points(const std::size_t degree,
     {
         if(flag & END_VEL)
         {
-            point_t vel = endPos - constraints.end_vel  / (num_t)degree;
+            point_t vel = pDef.end - constraints.end_vel  / (num_t)degree;
             if(flag & END_ACC)
             {
                 point_t acc = constraints.end_acc  / (num_t)(degree * (degree-1))
-                        + 2* vel - endPos;
+                        + 2* vel - pDef.end;
                 variables_.push_back(var_t(acc));
                 ++numConstants; ++i;
             }
@@ -140,7 +156,7 @@ problem_data<Point, Dim, Numeric> setup_control_points(const std::size_t degree,
                 ++i;
             }
         }
-        variables_.push_back(var_t(endPos));
+        variables_.push_back(var_t(pDef.end));
         ++numConstants; ++i;
     }
     // add remaining variables (only if no end_pos constraints)
@@ -151,6 +167,9 @@ problem_data<Point, Dim, Numeric> setup_control_points(const std::size_t degree,
     assert(numControlPoints == variables_.size());
 
 
+    problemData.bezier = computeLinearControlPoints<Numeric,
+                                            bezier_curve<Numeric, Numeric, Dim, true,vars_t>,
+                                            var_t, vars_t>(variables_,  pDef.totalTime);
     problemData.numControlPoints = numControlPoints;
     problemData.numVariables = numControlPoints-numConstants;
     problemData.startVariableIndex =first_variable_idx;
@@ -210,7 +229,6 @@ void bezierWaypointsToMatrixForm(const std::size_t startVariableIndex, const std
             varit != variables.begin() + startVariableIndex + numVariables; ++varit, col+=Dim)
         {
             matCurrentWp.block(0,col,Dim,Dim) =  varit->A_;
-            assert( (varit->A_ != Eigen::Matrix<Numeric, Dim, Dim>::Zero()) );
         }
         matrices.push_back(matCurrentWp);
         vectors.push_back(vecCurrentWp);
@@ -228,10 +246,9 @@ split(const problem_definition<Point, Dim, Numeric>& pDef, problem_data<Point, D
     typedef bezier_curve< Numeric, Numeric, Dim, true,variables_t> bezier_t;
     typedef std::vector<bezier_t> T_bezier_t;
 
-    const Numeric& totalTime = pDef.totalTime;
     const Eigen::VectorXd& times = pDef.splitTimes_;
     T_bezier_t res;
-    bezier_t current (pData.variables_.begin(), pData.variables_.begin(),totalTime);
+    bezier_t& current = *pData.bezier;
     real current_time = 0.;
     real tmp;
     for(int i = 0; i < times.rows(); ++i)
@@ -250,7 +267,7 @@ split(const problem_definition<Point, Dim, Numeric>& pDef, problem_data<Point, D
 // TODO assumes constant are inside constraints...
 template<typename Point, int Dim, typename Numeric>
 Eigen::Matrix<Numeric, Eigen::Dynamic, Eigen::Dynamic> initInequalityMatrix
-(const problem_definition<Point, Dim, Numeric>& pDef, const problem_data<Point, Dim, Numeric> & pData)
+(const problem_definition<Point, Dim, Numeric>& pDef, problem_data<Point, Dim, Numeric> & pData)
 {
     typedef problem_definition<Point, Dim, Numeric> problem_definition_t;
     typedef typename problem_definition_t::matrix_x_t matrix_x_t;
@@ -278,7 +295,7 @@ Eigen::Matrix<Numeric, Eigen::Dynamic, Eigen::Dynamic> initInequalityMatrix
     assert(pDef.inequalityMatrices_.size() == pDef.inequalityVectors_.size());
     assert(pDef.inequalityMatrices_.size() == beziers.size());
 
-    long currentRowIdx = 0, currentColIdx = 0;
+    long currentRowIdx = 0;
     typename problem_definition_t::CIT_matrix_dim_t cmit = pDef.inequalityMatrices_.begin();
     typename problem_definition_t::CIT_vectorx_t cvit = pDef.inequalityVectors_.begin();
     // for each bezier split ..
@@ -294,10 +311,10 @@ Eigen::Matrix<Numeric, Eigen::Dynamic, Eigen::Dynamic> initInequalityMatrix
         for(CIT_matrix_dimx_t mdim_cit = matrices.begin();
             mdim_cit != matrices.end(); ++mdim_cit, ++vdim_cit)
         {
-            ineqMatrix.block(currentRowIdx, currentColIdx,cmit->rows(),Dim)
+            ineqMatrix.block(currentRowIdx, 0,cmit->rows(),cols)
                     = (*cmit)*(*mdim_cit) ; // constraint inequality for current bezier * expression of control point
-            ineqVec.segment(currentRowIdx,cmit->rows()) = cvit - (*cmit)*(*vdim_cit) ;
-            currentRowIdx += cmit->rows(); currentColIdx+= Dim;
+            ineqVec.segment(currentRowIdx,cmit->rows()) = *cvit - (*cmit)*(*vdim_cit) ;
+            currentRowIdx += cmit->rows();
         }
     }
     assert (rows == currentRowIdx); // we filled all the constraints

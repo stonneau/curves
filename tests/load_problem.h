@@ -13,6 +13,11 @@
 #include "hpp/spline/optimization/linear_problem.h"
 #include "hpp/spline/optimization/details.h"
 
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <stdlib.h>
+
 namespace spline {
 
 typedef Eigen::Vector3d point_t;
@@ -37,12 +42,83 @@ namespace optimization
 typedef curve_constraints<point_t> constraint_linear;
 typedef linear_variable<3, double> linear_variable_t;
 typedef variables<linear_variable_t> variables_t;
+typedef variables_t::T_var_t T_linear_variable_t;
 typedef std::pair<std::size_t, std::size_t >   pair_size_t;
-typedef std::pair<variables_t, pair_size_t > var_pair_t;
+typedef std::pair<T_linear_variable_t, pair_size_t > var_pair_t;
 typedef problem_data<point_t, 3, double> problem_data_t;
+typedef problem_definition<point_t, 3, double> problem_definition_t;
 
+
+#define MAXBUFSIZE  ((int) 1e6)
+
+Eigen::MatrixXd readMatrix(std::ifstream& infile)
+{
+    int cols = 0, rows = 0;
+    double buff[MAXBUFSIZE];
+
+    // Read numbers from file into buffer.
+    //ifstream infile;
+    //infile.open(filename);
+    std::string line = "noise";
+    while (!infile.eof() && !line.empty())
+    {
+        std::getline(infile, line);
+
+        int temp_cols = 0;
+        std::stringstream stream(line);
+        while(! stream.eof())
+            stream >> buff[cols*rows+temp_cols++];
+
+        if (temp_cols == 0)
+            continue;
+
+        if (cols == 0)
+            cols = temp_cols;
+
+        rows++;
+    }
+    //infile.close();
+    rows--;
+
+    // Populate matrix with numbers.
+    Eigen::MatrixXd result(rows,cols);
+    for (int i = 0; i < rows; i++)
+        for (int j = 0; j < cols; j++)
+            result(i,j) = buff[ cols*i+j ];
+
+    return result;
+}
+
+problem_definition_t loadproblem(const std::string& filename)
+{
+    problem_definition_t pDef;
+    std::ifstream in (filename.c_str());
+    if (!in.is_open())
+        throw std::runtime_error("cant open filename");
+    //first line is degree totaltime flag
+    Eigen::Vector3d degTimeFlag = readMatrix(in);
+    pDef.degree = (std::size_t)(degTimeFlag[0]);
+    pDef.totalTime =degTimeFlag[1];
+    pDef.flag = (constraint_flag)(degTimeFlag[2]);
+    //Then startpos then empty line
+    pDef.start = readMatrix(in);
+    //Then endpos then empty line
+    pDef.end = readMatrix(in);
+    //Then splittimes then empty line
+    pDef.splitTimes_ = readMatrix(in);
+    // The inequality matrices, empty line, inequality vector as many times
+    for (int i = 0; i< pDef.splitTimes_.rows()+1; ++i)
+    {
+        pDef.inequalityMatrices_.push_back(readMatrix(in));
+        pDef.inequalityVectors_.push_back(readMatrix(in));
+    }
+    in.close();
+    return pDef;
+    // TODO curve constraints
 }
 
 }
+}
+
 
 #endif //_CLASS_LOAD_TEST_PROBLEMS
