@@ -36,6 +36,18 @@ struct problem_data
     std::size_t startVariableIndex; //before that index, variables are constant
     std::size_t numStateConstraints;
     bezier_t* bezier;
+
+
+    problem_data(const problem_data& other)
+        : variables_(other.variables_)
+        , numVariables(other.numVariables)
+        , numControlPoints(other.numControlPoints)
+        , startVariableIndex(other.startVariableIndex)
+        , numStateConstraints(other.numStateConstraints)
+    {
+        const bezier_t& b = *other.bezier;
+        bezier = new bezier_t(b.waypoints().begin(), b.waypoints().end(),b.T_, b.mult_T_);
+    }
 };
 
 inline std::size_t num_active_constraints(const constraint_flag& flag)

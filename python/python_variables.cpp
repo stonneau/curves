@@ -7,6 +7,96 @@
 namespace spline
 {
 namespace optimization {
+
+
+problem_data_t* setup_control_points_3_t(const problem_definition_t* pDef)
+{
+
+}
+
+void set_pd_flag(problem_definition_t* pDef, const int flag)
+{
+    pDef->flag = (constraint_flag)(flag);
+}
+void set_start(problem_definition_t* pDef, const Eigen::Vector3d val )
+{
+    pDef->start = val;
+}
+void set_end(problem_definition_t* pDef, const Eigen::Vector3d val )
+{
+    pDef->end = val;
+}
+void set_degree(problem_definition_t* pDef, const std::size_t val )
+{
+    pDef->degree = val;
+}
+void set_total_time(problem_definition_t* pDef, const std::size_t val )
+{
+    pDef->totalTime = val;
+}
+void set_split_time(problem_definition_t* pDef, const Eigen::VectorXd val )
+{
+    pDef->splitTimes_ = val;
+}
+Eigen::VectorXd get_split_times(const problem_definition_t* pDef)
+{
+    return pDef->splitTimes_;
+}
+
+constraint_flag get_pd_flag(const problem_definition_t* pDef)
+{
+    return pDef->flag;
+}
+Eigen::Vector3d get_start(const problem_definition_t* pDef)
+{
+    return pDef->start;
+}
+Eigen::Vector3d get_end(const problem_definition_t* pDef)
+{
+    return pDef->end;
+}
+std::size_t get_degree(const problem_definition_t* pDef)
+{
+    return pDef->degree;
+}
+double get_total_time(const problem_definition_t* pDef)
+{
+    return pDef->totalTime;
+}
+
+MatrixVector* get_ineq_at(const problem_definition_t* pDef, const std::size_t idx)
+{
+    if (idx > pDef->inequalityMatrices_.size() - 1)
+        throw std::runtime_error("required id is beyond number of inequality matrices");
+    MatrixVector* res = new MatrixVector();
+    res->res = std::make_pair(pDef->inequalityMatrices_[idx], pDef->inequalityVectors_[idx]);
+    return res;
+}
+bool del_ineq_at(problem_definition_t* pDef, const std::size_t idx)
+{
+    if (idx > pDef->inequalityMatrices_.size() - 1)
+        return false;
+    pDef->inequalityMatrices_.erase(pDef->inequalityMatrices_.begin() + idx -1);
+    pDef->inequalityVectors_.erase(pDef->inequalityVectors_.begin() + idx -1);
+    return true;
+}
+bool add_ineq_at(problem_definition_t* pDef, const Eigen::MatrixXd ineq, const Eigen::VectorXd vec)
+{
+    if (ineq.rows() != vec.rows())
+        throw std::runtime_error("ineq vector and matrix do not have the same number of rows");
+    if (!(pDef->inequalityMatrices_.empty()) && ineq.cols() != pDef->inequalityMatrices_.back().cols())
+        throw std::runtime_error("inequality matrix does not have the same variable dimension as existing matrices");
+    pDef->inequalityMatrices_.push_back(ineq);
+    pDef->inequalityVectors_.push_back(vec);
+    return true;
+}
+
+bezier_linear_variable_t* pDataBezier(const problem_data_t* pData)
+{
+    const bezier_linear_variable_t& b = *pData->bezier;
+    return new bezier_linear_variable_t(b.waypoints().begin(), b.waypoints().end(),b.T_, b.mult_T_);
+}
+
 std::vector<linear_variable_3_t> matrix3DFromEigenArray(const point_list_t& matrices, const point_list_t& vectors)
 {
     assert(vectors.cols() * 3  == matrices.cols() ) ;
@@ -53,7 +143,7 @@ bezier_linear_variable_t* wrapBezierLinearConstructorBounds(const point_list_t& 
 }
 
 
-LinearControlPointsHolder*
+MatrixVector*
         wayPointsToLists(const bezier_linear_variable_t& self)
 {
     typedef typename bezier_linear_variable_t::t_point_t t_point;
@@ -75,7 +165,7 @@ LinearControlPointsHolder*
             matrices.block<3,3>(i,col*3) = varit->A_;
         }
     }
-    LinearControlPointsHolder* res (new LinearControlPointsHolder);
+    MatrixVector* res (new MatrixVector);
     res->res = std::make_pair(matrices, vectors);
     return res;
 }

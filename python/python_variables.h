@@ -23,9 +23,11 @@ typedef problem_definition<point_t, dim, real> problem_definition_t;
 typedef problem_data<point_t, dim, real>problem_data_t;
 typedef problem<point_t, dim, real> problem_t;
 
-
+problem_data_t* setup_control_points_3_t(const problem_definition_t* pDef);
 
 /*linear variable control points*/
+bezier_linear_variable_t* pDataBezier(const problem_data_t* pData);
+
 bezier_linear_variable_t* wrapBezierLinearConstructor(const point_list_t& matrices, const point_list_t& vectors);
 
 bezier_linear_variable_t* wrapBezierLinearConstructorBounds
@@ -34,14 +36,14 @@ bezier_linear_variable_t* wrapBezierLinearConstructorBounds
 typedef std::pair<Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic>,
                   Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> > linear_points_t;
 
-struct LinearControlPointsHolder
+struct MatrixVector
 {
     linear_points_t res;
     Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> A() {return res.first;}
     Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> b() {return res.second;}
 };
 
-LinearControlPointsHolder* wayPointsToLists(const bezier_linear_variable_t& self);
+MatrixVector* wayPointsToLists(const bezier_linear_variable_t& self);
 
 struct LinearBezierVector
 {
@@ -56,6 +58,23 @@ struct LinearBezierVector
 
 // does not include end time
 LinearBezierVector* split_py(const bezier_linear_variable_t& self,  const vectorX_t& times);
+
+void set_pd_flag(problem_definition_t* pDef, const int flag);
+void set_start(problem_definition_t* pDef, const Eigen::Vector3d val );
+void set_end(problem_definition_t* pDef, const Eigen::Vector3d val );
+void set_degree(problem_definition_t* pDef, const std::size_t val );
+void set_total_time(problem_definition_t* pDef, const std::size_t val );
+void set_split_time(problem_definition_t* pDef, const Eigen::VectorXd val );
+Eigen::VectorXd get_split_times(const problem_definition_t* pDef);
+constraint_flag get_pd_flag(const problem_definition_t* pDef);
+Eigen::Vector3d get_start(const problem_definition_t* pDef);
+Eigen::Vector3d get_end(const problem_definition_t* pDef);
+std::size_t get_degree(const problem_definition_t* pDef);
+double get_total_time(const problem_definition_t* pDef);
+Eigen::VectorXd get_split_times(const problem_definition_t* pDef);
+MatrixVector* get_ineq_at(const problem_definition_t* pDef, const std::size_t idx);
+bool del_ineq_at(problem_definition_t* pDef, const std::size_t idx);
+bool add_ineq_at(problem_definition_t* pDef, const Eigen::MatrixXd ineq, const Eigen::VectorXd vec);
 } //namespace optimization
 } //namespace spline.
 

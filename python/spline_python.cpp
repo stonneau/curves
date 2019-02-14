@@ -80,10 +80,10 @@ BOOST_PYTHON_MODULE(hpp_spline)
 
 
     /** BEGIN variable points bezier curve**/
-    class_<LinearControlPointsHolder>
-        ("LinearWaypoint", no_init)
-        .def_readonly("A", &LinearControlPointsHolder::A)
-        .def_readonly("b", &LinearControlPointsHolder::b)
+    class_<MatrixVector>
+        ("MatrixVector", no_init)
+        .def_readonly("A", &MatrixVector::A)
+        .def_readonly("b", &MatrixVector::b)
         ;
 
     class_<LinearBezierVector>
@@ -107,6 +107,37 @@ BOOST_PYTHON_MODULE(hpp_spline)
             .def_readonly("degree", &bezier_linear_variable_t::degree_)
             .def_readonly("nbWaypoints", &bezier_linear_variable_t::size_)
         ;
+
+
+    class_<LinearBezierVector>
+        ("bezierVarVector", no_init)
+        .def_readonly("size", &LinearBezierVector::size)
+        .def("at", &LinearBezierVector::at, return_value_policy<manage_new_object>())
+        ;
+
+    class_<problem_definition_t>
+        ("problemDefinition", init<>())
+            .add_property("flag", &get_pd_flag, &set_pd_flag)
+            .add_property("start", &get_start, &set_start)
+            .add_property("degree", &get_degree, &set_degree)
+            .add_property("totalTime", &get_total_time, &set_total_time)
+            .add_property("splits", &get_split_times, &set_split_time)
+            .def("inequality", &get_ineq_at, return_value_policy<manage_new_object>())
+            .def("removeInequality", &del_ineq_at)
+            .def("addInequality", &add_ineq_at)
+        ;
+
+    def("setupControlPoints", setup_control_points_3_t, return_value_policy<manage_new_object>());
+
+    class_<problem_data_t>
+        ("problemData", no_init)
+            .def("bezier", &pDataBezier, return_value_policy<manage_new_object>())
+            .def_readonly("numControlPoints", &problem_data_t::numControlPoints)
+            .def_readonly("numVariables", &problem_data_t::numVariables)
+            .def_readonly("startVariableIndex", &problem_data_t::startVariableIndex)
+            .def_readonly("numStateConstraints", &problem_data_t::numStateConstraints)
+        ;
+
 
     enum_<constraint_flag>("constraint_flag")
             .value("INIT_POS", INIT_POS)
