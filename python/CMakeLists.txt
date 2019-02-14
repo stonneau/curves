@@ -3,7 +3,8 @@ STRING(REGEX REPLACE "-" "_" PY_NAME ${PROJECT_NAME})
 ADD_REQUIRED_DEPENDENCY("eigenpy")
 
 # Define the wrapper library that wraps our library
-add_library( ${PY_NAME} SHARED spline_python.cpp python_variables.cpp python_variables.h )
+add_library( ${PY_NAME} SHARED spline_python.cpp python_variables.cpp python_variables.h
+    python_bezier_def.cpp python_bezier_def.h)
 #~ target_link_libraries( centroidal_dynamics ${Boost_LIBRARIES} ${PROJECT_NAME} )
 # don't prepend wrapper library name with lib
 set_target_properties( ${PY_NAME} PROPERTIES PREFIX ""  )

@@ -3,7 +3,7 @@ from numpy.linalg import norm
 
 from hpp_spline import bezier, bezier6, curve_constraints, exact_cubic, from_bezier, polynom, spline_deriv_constraint
 
-__EPS = 1e-6
+__EPS = 1e-8
 
 waypoints = matrix([[1., 2., 3.], [4., 5., 6.]]).transpose()
 waypoints6 = matrix([[1., 2., 3., 7., 5., 5.], [4., 5., 6., 4., 5., 6.]]).transpose()
@@ -23,15 +23,16 @@ a = a.compute_derivate(100)
 
 prim = a.compute_primitive(1)
 
+
 for i in range(10):
     t = float(i) / 10.
-    assert (a(t) == prim.derivate(t, 1)).all()
+    assert norm(a(t) - prim.derivate(t, 1)) < __EPS
 assert (prim(0) == matrix([0., 0., 0.])).all()
 
 prim = a.compute_primitive(2)
 for i in range(10):
     t = float(i) / 10.
-    assert (a(t) == prim.derivate(t, 2)).all()
+    norm(a(t) - prim.derivate(t, 2)) < __EPS
 assert (prim(0) == matrix([0., 0., 0.])).all()
 
 waypoints = matrix([[1., 2., 3.], [4., 5., 6.], [4., 5., 6.], [4., 5., 6.], [4., 5., 6.]]).transpose()

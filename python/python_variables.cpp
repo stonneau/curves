@@ -6,7 +6,7 @@
 
 namespace spline
 {
-
+namespace optimization {
 std::vector<linear_variable_3_t> matrix3DFromEigenArray(const point_list_t& matrices, const point_list_t& vectors)
 {
     assert(vectors.cols() * 3  == matrices.cols() ) ;
@@ -82,7 +82,7 @@ LinearControlPointsHolder*
 
 
 // does not include end time
-LinearBezierVector* split(const bezier_linear_variable_t& self,  const vectorX_t& times)
+LinearBezierVector* split_py(const bezier_linear_variable_t& self,  const vectorX_t& times)
 {
     LinearBezierVector* res (new LinearBezierVector);
     bezier_linear_variable_t current = self;
@@ -100,5 +100,5 @@ LinearBezierVector* split(const bezier_linear_variable_t& self,  const vectorX_t
     return res;
 }
 
-}
- // namespace spline
+} // namespace optimization
+} // namespace spline

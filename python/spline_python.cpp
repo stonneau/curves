@@ -1,12 +1,7 @@
-#include "hpp/spline/bezier_curve.h"
-#include "hpp/spline/polynom.h"
-#include "hpp/spline/exact_cubic.h"
-#include "hpp/spline/spline_deriv_constraint.h"
-#include "hpp/spline/curve_constraint.h"
-#include "hpp/spline/bezier_polynom_conversion.h"
-#include "hpp/spline/bernstein.h"
+#include "hpp/spline/optimization/linear_problem.h"
 
 #include "python_definitions.h"
+#include "python_bezier_def.h"
 #include "python_variables.h"
 
 #include <vector>
@@ -16,25 +11,11 @@
 
 #include <boost/python.hpp>
 
-/*** TEMPLATE SPECIALIZATION FOR PYTHON ****/
 using namespace  spline;
+using namespace  spline::optimization;
+using namespace boost::python;
 
-typedef spline::bezier_curve  <real, real, 3, true, point_t> bezier_t;
-typedef spline::bezier_curve  <real, real, 6, true, point6_t> bezier6_t;
-typedef spline::polynom  <real, real, 3, true, point_t, t_point_t> polynom_t;
-typedef spline::exact_cubic  <real, real, 3, true, point_t, t_point_t> exact_cubic_t;
-typedef polynom_t::coeff_t coeff_t;
-typedef std::pair<real, point_t> waypoint_t;
-typedef std::vector<waypoint_t, Eigen::aligned_allocator<point_t> > t_waypoint_t;
-
-typedef spline::Bern<double> bernstein_t;
-
-
-typedef spline::spline_deriv_constraint  <real, real, 3, true, point_t, t_point_t> spline_deriv_constraint_t;
-typedef spline::curve_constraints<point_t> curve_constraints_t;
-typedef spline::curve_constraints<point6_t> curve_constraints6_t;
 /*** TEMPLATE SPECIALIZATION FOR PYTHON ****/
-
 EIGENPY_DEFINE_STRUCT_ALLOCATOR_SPECIALIZATION(bernstein_t)
 EIGENPY_DEFINE_STRUCT_ALLOCATOR_SPECIALIZATION(bezier_t)
 EIGENPY_DEFINE_STRUCT_ALLOCATOR_SPECIALIZATION(bezier6_t)
@@ -42,149 +23,6 @@ EIGENPY_DEFINE_STRUCT_ALLOCATOR_SPECIALIZATION(polynom_t)
 EIGENPY_DEFINE_STRUCT_ALLOCATOR_SPECIALIZATION(exact_cubic_t)
 EIGENPY_DEFINE_STRUCT_ALLOCATOR_SPECIALIZATION(curve_constraints_t)
 EIGENPY_DEFINE_STRUCT_ALLOCATOR_SPECIALIZATION(spline_deriv_constraint_t)
-
-namespace spline
-{
-using namespace boost::python;
-
-template <typename Bezier, typename PointList, typename T_Point>
-Bezier* wrapBezierConstructorTemplate(const PointList& array, const real ub =1.)
-{
-    T_Point asVector = vectorFromEigenArray<PointList, T_Point>(array);
-    return new Bezier(asVector.begin(), asVector.end(), ub);
-}
-
-template <typename Bezier, typename PointList, typename T_Point, typename CurveConstraints>
-Bezier* wrapBezierConstructorConstraintsTemplate(const PointList& array, const CurveConstraints& constraints, const real ub =1.)
-{
-    T_Point asVector = vectorFromEigenArray<PointList, T_Point>(array);
-    return new Bezier(asVector.begin(), asVector.end(), constraints, ub);
-}
-
-/*3D constructors */
-bezier_t* wrapBezierConstructor(const point_list_t& array)
-{
-    return wrapBezierConstructorTemplate<bezier_t, point_list_t, t_point_t>(array) ;
-}
-bezier_t* wrapBezierConstructorBounds(const point_list_t& array, const real ub)
-{
-    return wrapBezierConstructorTemplate<bezier_t, point_list_t, t_point_t>(array, ub) ;
-}
-bezier_t* wrapBezierConstructorConstraints(const point_list_t& array, const curve_constraints_t& constraints)
-{
-    return wrapBezierConstructorConstraintsTemplate<bezier_t, point_list_t, t_point_t, curve_constraints_t>(array, constraints) ;
-}
-bezier_t* wrapBezierConstructorBoundsConstraints(const point_list_t& array, const curve_constraints_t& constraints, const real ub)
-{
-    return wrapBezierConstructorConstraintsTemplate<bezier_t, point_list_t, t_point_t, curve_constraints_t>(array, constraints, ub) ;
-}
-/*END 3D constructors */
-/*6D constructors */
-bezier6_t* wrapBezierConstructor6(const point_list6_t& array)
-{
-    return wrapBezierConstructorTemplate<bezier6_t, point_list6_t, t_point6_t>(array) ;
-}
-bezier6_t* wrapBezierConstructorBounds6(const point_list6_t& array, const real ub)
-{
-    return wrapBezierConstructorTemplate<bezier6_t, point_list6_t, t_point6_t>(array, ub) ;
-}
-bezier6_t* wrapBezierConstructor6Constraints(const point_list6_t& array, const curve_constraints6_t& constraints)
-{
-    return wrapBezierConstructorConstraintsTemplate<bezier6_t, point_list6_t, t_point6_t, curve_constraints6_t>(array, constraints) ;
-}
-bezier6_t* wrapBezierConstructorBounds6Constraints(const point_list6_t& array, const curve_constraints6_t& constraints, const real ub)
-{
-    return wrapBezierConstructorConstraintsTemplate<bezier6_t, point_list6_t, t_point6_t, curve_constraints6_t>(array, constraints, ub) ;
-}
-/*END 6D constructors */
-
-polynom_t* wrapSplineConstructor(const coeff_t& array)
-{
-    return new polynom_t(array, 0., 1.);
-}
-
-
-t_waypoint_t getWayPoints(const coeff_t& array, const time_waypoints_t& time_wp)
-{
-    t_waypoint_t res;
-    for(int i =0;i<array.cols();++i)
-        res.push_back(std::make_pair(time_wp(i), array.col(i)));
-    return res;
-}
-
-template <typename BezierType, int dim>
-Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> wayPointsToList(const BezierType& self)
-{
-    typedef typename BezierType::t_point_t t_point;
-    typedef typename BezierType::t_point_t::const_iterator cit_point;
-    const t_point& wps = self.waypoints();
-    Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> res (dim, wps.size());
-    int col = 0;
-    for(cit_point cit = wps.begin(); cit != wps.end(); ++cit, ++col)
-        res.block<dim,1>(0,col) = *cit;
-    return res;
-}
-
-exact_cubic_t* wrapExactCubicConstructor(const coeff_t& array, const time_waypoints_t& time_wp)
-{
-    t_waypoint_t wps = getWayPoints(array, time_wp);
-    return new exact_cubic_t(wps.begin(), wps.end());
-}
-
-
-spline_deriv_constraint_t* wrapSplineDerivConstraint(const coeff_t& array, const time_waypoints_t& time_wp, const curve_constraints_t& constraints)
-{
-    t_waypoint_t wps = getWayPoints(array, time_wp);
-    return new spline_deriv_constraint_t(wps.begin(), wps.end(),constraints);
-}
-
-spline_deriv_constraint_t* wrapSplineDerivConstraintNoConstraints(const coeff_t& array, const time_waypoints_t& time_wp)
-{
-    t_waypoint_t wps = getWayPoints(array, time_wp);
-    return new spline_deriv_constraint_t(wps.begin(), wps.end());
-}
-
-point_t get_init_vel(const curve_constraints_t& c)
-{
-    return c.init_vel;
-}
-
-point_t get_init_acc(const curve_constraints_t& c)
-{
-    return c.init_acc;
-}
-
-point_t get_end_vel(const curve_constraints_t& c)
-{
-    return c.end_vel;
-}
-
-point_t get_end_acc(const curve_constraints_t& c)
-{
-    return c.end_acc;
-}
-
-void set_init_vel(curve_constraints_t& c, const point_t& val)
-{
-    c.init_vel = val;
-}
-
-void set_init_acc(curve_constraints_t& c, const point_t& val)
-{
-    c.init_acc = val;
-}
-
-void set_end_vel(curve_constraints_t& c, const point_t& val)
-{
-    c.end_vel = val;
-}
-
-void set_end_acc(curve_constraints_t& c, const point_t& val)
-{
-    c.end_acc = val;
-}
-
-
 
 BOOST_PYTHON_MODULE(hpp_spline)
 {
@@ -264,13 +102,23 @@ BOOST_PYTHON_MODULE(hpp_spline)
             .def("derivate", &bezier_linear_variable_t::derivate)
             .def("compute_derivate", &bezier_linear_variable_t::compute_derivate)
             .def("compute_primitive", &bezier_linear_variable_t::compute_primitive)
-            .def("split", &split, return_value_policy<manage_new_object>())
+            .def("split", &split_py, return_value_policy<manage_new_object>())
             .def("waypoints", &wayPointsToLists, return_value_policy<manage_new_object>())
             .def_readonly("degree", &bezier_linear_variable_t::degree_)
             .def_readonly("nbWaypoints", &bezier_linear_variable_t::size_)
         ;
-    /** END variable points bezier curve**/
 
+    enum_<constraint_flag>("constraint_flag")
+            .value("INIT_POS", INIT_POS)
+            .value("INIT_VEL", INIT_VEL)
+            .value("INIT_ACC", INIT_ACC)
+            .value("END_POS", END_POS)
+            .value("END_VEL", END_VEL)
+            .value("END_ACC", END_ACC)
+            .value("ALL", ALL)
+            .value("NONE", NONE)
+            .export_values();
+    /** END variable points bezier curve**/
 
     /** BEGIN spline curve function**/
     class_<polynom_t>("polynom",  init<const polynom_t::coeff_t, const real, const real >())
@@ -329,7 +177,5 @@ BOOST_PYTHON_MODULE(hpp_spline)
     def("from_bezier", from_bezier<bezier_t,polynom_t>);
     /** END Bezier to polynom conversion**/
 
-
-}
 
 } // namespace spline

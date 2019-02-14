@@ -2,6 +2,8 @@
 #include "hpp/spline/linear_variable.h"
 
 #include "python_definitions.h"
+#include "hpp/spline/optimization/definitions.h"
+#include "hpp/spline/optimization/linear_problem.h"
 
 #include <vector>
 
@@ -11,10 +13,16 @@
 
 namespace spline
 {
+namespace optimization
+{
 static const int dim = 3;
-typedef spline::linear_variable<dim, real> linear_variable_3_t;
-typedef spline::variables<linear_variable_3_t> variables_3_t;
-typedef spline::bezier_curve  <real, real, dim, true, variables_3_t> bezier_linear_variable_t;
+typedef linear_variable<dim, real> linear_variable_3_t;
+typedef variables<linear_variable_3_t> variables_3_t;
+typedef bezier_curve  <real, real, dim, true, variables_3_t> bezier_linear_variable_t;
+typedef problem_definition<point_t, dim, real> problem_definition_t;
+typedef problem_data<point_t, dim, real>problem_data_t;
+typedef problem<point_t, dim, real> problem_t;
+
 
 
 /*linear variable control points*/
@@ -47,7 +55,8 @@ struct LinearBezierVector
 };
 
 // does not include end time
-LinearBezierVector* split(const bezier_linear_variable_t& self,  const vectorX_t& times);
+LinearBezierVector* split_py(const bezier_linear_variable_t& self,  const vectorX_t& times);
+} //namespace optimization
 } //namespace spline.
 
 
