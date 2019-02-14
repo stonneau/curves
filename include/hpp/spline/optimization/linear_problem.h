@@ -24,7 +24,7 @@ template<typename Point, int Dim, typename Numeric>
 problem<Point, Dim, Numeric> generate_problem(const problem_definition<Point, Dim, Numeric>& pDef)
 {
     problem<Point, Dim, Numeric> prob;
-    problem_data<Point, Dim, Numeric>& pData = setup_control_points<Point, Dim, Numeric>(pDef);
+    problem_data<Point, Dim, Numeric> pData = setup_control_points<Point, Dim, Numeric>(pDef);
     initInequalityMatrix<Point, Dim, Numeric>(pDef,pData,prob);
     return prob;
 }

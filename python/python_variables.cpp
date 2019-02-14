@@ -9,20 +9,29 @@ namespace spline
 namespace optimization {
 
 
-problem_data_t* setup_control_points_3_t(const problem_definition_t* pDef)
+problem_data_t setup_control_points_3_t(problem_definition_t &pDef)
 {
+    problem_data_t pData = setup_control_points<point_t,dim,real>(pDef);
+    return pData;//return new problem_data_t(pData);
+}
 
+MatrixVector generate_problem_3_t(const problem_definition_t &pDef)
+{
+    problem_t prob = generate_problem<point_t,dim,real>(pDef);
+    MatrixVector res;
+    res.res = std::make_pair(prob.ineqMatrix,prob.ineqVector);
+    return res;
 }
 
 void set_pd_flag(problem_definition_t* pDef, const int flag)
 {
     pDef->flag = (constraint_flag)(flag);
 }
-void set_start(problem_definition_t* pDef, const Eigen::Vector3d val )
+void set_start(problem_definition_t* pDef, const point_t &val )
 {
     pDef->start = val;
 }
-void set_end(problem_definition_t* pDef, const Eigen::Vector3d val )
+void set_end(problem_definition_t* pDef, const point_t &val )
 {
     pDef->end = val;
 }
@@ -34,7 +43,7 @@ void set_total_time(problem_definition_t* pDef, const std::size_t val )
 {
     pDef->totalTime = val;
 }
-void set_split_time(problem_definition_t* pDef, const Eigen::VectorXd val )
+void set_split_time(problem_definition_t* pDef, const Eigen::VectorXd& val )
 {
     pDef->splitTimes_ = val;
 }

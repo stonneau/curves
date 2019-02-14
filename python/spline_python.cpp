@@ -127,7 +127,8 @@ BOOST_PYTHON_MODULE(hpp_spline)
             .def("addInequality", &add_ineq_at)
         ;
 
-    def("setupControlPoints", setup_control_points_3_t, return_value_policy<manage_new_object>());
+    def("setupControlPoints", &setup_control_points_3_t);
+    def("generate_problem", &generate_problem_3_t);
 
     class_<problem_data_t>
         ("problemData", no_init)

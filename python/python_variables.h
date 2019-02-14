@@ -23,7 +23,8 @@ typedef problem_definition<point_t, dim, real> problem_definition_t;
 typedef problem_data<point_t, dim, real>problem_data_t;
 typedef problem<point_t, dim, real> problem_t;
 
-problem_data_t* setup_control_points_3_t(const problem_definition_t* pDef);
+problem_data_t setup_control_points_3_t(problem_definition_t &pDef);
+
 
 /*linear variable control points*/
 bezier_linear_variable_t* pDataBezier(const problem_data_t* pData);
@@ -43,6 +44,8 @@ struct MatrixVector
     Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> b() {return res.second;}
 };
 
+MatrixVector generate_problem_3_t(const problem_definition_t &pDef);
+
 MatrixVector* wayPointsToLists(const bezier_linear_variable_t& self);
 
 struct LinearBezierVector
@@ -60,11 +63,11 @@ struct LinearBezierVector
 LinearBezierVector* split_py(const bezier_linear_variable_t& self,  const vectorX_t& times);
 
 void set_pd_flag(problem_definition_t* pDef, const int flag);
-void set_start(problem_definition_t* pDef, const Eigen::Vector3d val );
-void set_end(problem_definition_t* pDef, const Eigen::Vector3d val );
+void set_start(problem_definition_t* pDef, const point_t& val );
+void set_end(problem_definition_t* pDef, const point_t& val );
 void set_degree(problem_definition_t* pDef, const std::size_t val );
 void set_total_time(problem_definition_t* pDef, const std::size_t val );
-void set_split_time(problem_definition_t* pDef, const Eigen::VectorXd val );
+void set_split_time(problem_definition_t* pDef, const Eigen::VectorXd& val );
 Eigen::VectorXd get_split_times(const problem_definition_t* pDef);
 constraint_flag get_pd_flag(const problem_definition_t* pDef);
 Eigen::Vector3d get_start(const problem_definition_t* pDef);
