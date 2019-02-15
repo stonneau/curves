@@ -85,17 +85,36 @@ def genProblemDef(numvars = 3, numcurves= 4):
         valDep = array([[np.random.uniform(0., 1.), np.random.uniform(0.,5.), 0. ]]).T
         valEnd = array([[np.random.uniform(5., 10.), np.random.uniform(0.,5.), 0.]]).T
         pDef = problemDefinition()
+        pDef.flag =  int(constraint_flag.END_POS) | int(constraint_flag.INIT_POS)
+        #~ pDef.flag =  constraint_flag.INIT_POS
+        #~ pDef.flag =  constraint_flag.END_POS
         pDef.start = valDep
         pDef.end = valEnd
         pDef.degree = numvars + 1
         pDef.splits = array([genSplit(numcurves)]).T        
-        genConstraintsPerPhase(pDef, numcurves+1) #load random inequality constraints
+        genConstraintsPerPhase(pDef, numcurves) #load random inequality constraints
         return pDef
 
 def __getbezVar(pDef): #for plotting only
         vB = varBezier()
         pData = setupControlPoints(pDef)
         return vB.fromBezier(pData.bezier())
+
+def __addZeroConstants(res, pDef):
+        r = res.tolist()
+        if (int)(constraint_flag.INIT_POS) & (int)(pDef.flag):
+                r = [0.,0.,0.] + r
+        if (int)(constraint_flag.END_POS) & (int)(pDef.flag):
+                r = r + [0.,0.,0.]
+        return array(r)
+        
+def __remZeroConstants(P, pDef):
+        r = P[:]
+        if (int)(constraint_flag.INIT_POS) & (int)(pDef.flag):
+                r = r[3:,3:];
+        if (int)(constraint_flag.END_POS) & (int)(pDef.flag):
+                r = r[:-3,:-3];
+        return r
 
 def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
         global idxFile
@@ -107,8 +126,12 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
         line_current = [array([1.,1.,0.]), array([0.,1.,0.])]
         
         #qp vars
-        P = accelerationcost(bezVar)[0]; P = P + identity(P.shape[0]) * 0.0001
-        q = zeros(3*bezVar.bezier.nbWaypoints)
+        q = zeros(ineq.A.shape[1])
+        #remove cost for first and last points
+        P = accelerationcost(bezVar)[0]
+        P = __remZeroConstants(P, pDef)
+        P = P + identity(P.shape[0]) * 0.0001
+        P = identity(q.shape[0])
         q[-1] = -1
         G = zeros([2,q.shape[0]])
         h = zeros(2)
@@ -122,6 +145,7 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
         C = None; d = None
         try:
                 res = quadprog_solve_qp(P, q, G=G, h=h, C=C, d=d)
+                res = __addZeroConstants(res, pDef)
                 #plot bezier
                 for i, bez in enumerate(subs):
                         color = colors[i]
@@ -157,11 +181,11 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
 def gen(save = False):
         #~ testConstant = genBezierInput(20)
         #~ splits = genSplit(4)
-        pDef = genProblemDef(20,4)
+        pDef = genProblemDef(10,5)
         return computeTrajectory(pDef, save)
 
 res = None
-for i in range(100):
+for i in range(1):
         res = gen(False)
         #~ if res[0] != None:
                 #~ break
