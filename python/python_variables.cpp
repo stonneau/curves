@@ -9,6 +9,17 @@ namespace spline
 namespace optimization {
 
 
+
+
+void set_constraint(problem_definition_t &pDef, const curve_constraints_t& constraints)
+{
+    pDef.curveConstraints = constraints;
+}
+curve_constraints_t get_constraint(problem_definition_t &pDef)
+{
+    return pDef.curveConstraints;
+}
+
 problem_data_t setup_control_points_3_t(problem_definition_t &pDef)
 {
     problem_data_t pData = setup_control_points<point_t,dim,real>(pDef);

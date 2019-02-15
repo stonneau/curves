@@ -22,9 +22,12 @@ typedef bezier_curve  <real, real, dim, true, variables_3_t> bezier_linear_varia
 typedef problem_definition<point_t, dim, real> problem_definition_t;
 typedef problem_data<point_t, dim, real>problem_data_t;
 typedef problem<point_t, dim, real> problem_t;
+typedef spline::curve_constraints<point_t> curve_constraints_t;
 
 problem_data_t setup_control_points_3_t(problem_definition_t &pDef);
 
+void set_constraint(problem_definition_t &pDef, const curve_constraints_t& constraints);
+curve_constraints_t get_constraint(problem_definition_t &pDef);
 
 /*linear variable control points*/
 bezier_linear_variable_t* pDataBezier(const problem_data_t* pData);
