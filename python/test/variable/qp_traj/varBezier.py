@@ -54,17 +54,16 @@ class varBezier:
                 if varId < 0:
                         return self.bezier.waypoints().A, self.bezier.waypoints().b
                 assert self.bezier.nbWaypoints > varId
+                mat = self.bezier.waypoints()
                 mat = self.bezier.waypoints().A[:, varId*3:varId*3+3]
-                vec = self.bezier.waypoints().b[:, varId]
+                vec = self.bezier.waypoints().b[:, varId]         
                 return mat, vec
                 
         def matrixFromWaypoints (self, varId):
                 assert(varId >= 0)
                 mat, vec = self.waypoints(varId)
                 resvec = zeros(3)
-                for i in range(0, mat.shape[0]/3, 1):
-                        resvec += vec[i*3:i*3+3]
-                return mat.transpose(), resvec
+                return mat.transpose(), vec
                 
         def toBezier3(self, x):
                 wps = []

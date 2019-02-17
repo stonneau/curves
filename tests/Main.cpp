@@ -13,14 +13,14 @@ namespace spline
 
 bool QuasiEqual(const double a, const double b, const float margin)
 {
-	if ((a <= 0 && b <= 0) || (a >= 0 && b>= 0))
-	{
+    if ((a <= 0 && b <= 0) || (a >= 0 && b>= 0))
+    {
         return (abs(a-b)) <= margin;
-	}
-	else
-	{
-		return abs(a) + abs(b) <= margin;
-	}
+    }
+    else
+    {
+        return abs(a) + abs(b) <= margin;
+    }
 }
 
 const double margin = 0.001;
@@ -38,10 +38,10 @@ ostream& operator<<(ostream& os, const point_t& pt)
 void ComparePoints(const Eigen::VectorXd& pt1, const Eigen::VectorXd& pt2, const std::string& errmsg, bool& error, bool notequal = false)
 {
     if((pt1-pt2).norm() > margin && !notequal)
-	{
-		error = true;
+    {
+        error = true;
         std::cout << errmsg << pt1.transpose() << " ; " << pt2.transpose() << std::endl;
-	}
+    }
 }
 
 /*Cubic Function tests*/
@@ -49,9 +49,9 @@ void ComparePoints(const Eigen::VectorXd& pt1, const Eigen::VectorXd& pt2, const
 void CubicFunctionTest(bool& error)
 {
     std::string errMsg("In test CubicFunctionTest ; unexpected result for x ");
-	point_t a(1,2,3);
-	point_t b(2,3,4);
-	point_t c(3,4,5);
+    point_t a(1,2,3);
+    point_t b(2,3,4);
+    point_t c(3,4,5);
     point_t d(3,6,7);
     t_point_t vec;
     vec.push_back(a);
@@ -122,41 +122,41 @@ void CubicFunctionTest(bool& error)
 
 void BezierCurveTest(bool& error)
 {
-	std::string errMsg("In test BezierCurveTest ; unexpected result for x ");
-	point_t a(1,2,3);
-	point_t b(2,3,4);
-	point_t c(3,4,5);
-	point_t d(3,6,7);
+    std::string errMsg("In test BezierCurveTest ; unexpected result for x ");
+    point_t a(1,2,3);
+    point_t b(2,3,4);
+    point_t c(3,4,5);
+    point_t d(3,6,7);
 
-	std::vector<point_t> params;
-	params.push_back(a);
-	params.push_back(b);
+    std::vector<point_t> params;
+    params.push_back(a);
+    params.push_back(b);
 
-	// 2d curve
-	bezier_curve_t cf(params.begin(), params.end());
-	point_t res1;
-	res1 = cf(0);
-	point_t x20 = a ;
+    // 2d curve
+    bezier_curve_t cf(params.begin(), params.end());
+    point_t res1;
+    res1 = cf(0);
+    point_t x20 = a ;
     ComparePoints(x20, res1, errMsg + "2(0) ", error);
 
-	point_t x21 = b;
-	res1 = cf(1);
+    point_t x21 = b;
+    res1 = cf(1);
     ComparePoints(x21, res1, errMsg + "2(1) ", error);
 
-	//3d curve
-	params.push_back(c);
-	bezier_curve_t cf3(params.begin(), params.end());
-	res1 = cf3(0);
+    //3d curve
+    params.push_back(c);
+    bezier_curve_t cf3(params.begin(), params.end());
+    res1 = cf3(0);
     ComparePoints(a, res1, errMsg + "3(0) ", error);
 
-	res1 = cf3(1);
+    res1 = cf3(1);
     ComparePoints(c, res1, errMsg + "3(1) ", error);
 
-	//4d curve
-	params.push_back(d);
+    //4d curve
+    params.push_back(d);
     bezier_curve_t cf4(params.begin(), params.end(), 2);
 
-	res1 = cf4(2);
+    res1 = cf4(2);
     ComparePoints(d, res1, errMsg + "3(1) ", error);
 
     //testing bernstein polynomes
@@ -171,43 +171,43 @@ void BezierCurveTest(bool& error)
     }
 
     bool error_in(true);
-	try
-	{
-		cf(-0.4);
-	}
-	catch(...)
-	{
+    try
+    {
+        cf(-0.4);
+    }
+    catch(...)
+    {
         error_in = false;
-	}
+    }
     if(error_in)
-	{
-		std::cout << "Evaluation of bezier cf error, -0.4 should be an out of range value\n";
+    {
+        std::cout << "Evaluation of bezier cf error, -0.4 should be an out of range value\n";
         error = true;
-	}
+    }
     error_in = true;
-	try
-	{
-		cf(1.1);
-	}
-	catch(...)
-	{
+    try
+    {
+        cf(1.1);
+    }
+    catch(...)
+    {
         error_in = false;
-	}
+    }
     if(error_in)
-	{
-		std::cout << "Evaluation of bezier cf error, 1.1 should be an out of range value\n";
+    {
+        std::cout << "Evaluation of bezier cf error, 1.1 should be an out of range value\n";
         error = true;
-	}
-	if(cf.max() != 1)
-	{
-		error = true;
-		std::cout << "Evaluation of exactCubic error, MaxBound should be equal to 1\n";
-	}
-	if(cf.min() != 0)
-	{
-		error = true;
-		std::cout << "Evaluation of exactCubic error, MinBound should be equal to 1\n";
-	}
+    }
+    if(cf.max() != 1)
+    {
+        error = true;
+        std::cout << "Evaluation of exactCubic error, MaxBound should be equal to 1\n";
+    }
+    if(cf.min() != 0)
+    {
+        error = true;
+        std::cout << "Evaluation of exactCubic error, MinBound should be equal to 1\n";
+    }
 }
 
 #include <ctime>
@@ -435,84 +435,84 @@ void BezierToPolynomConversionTest(bool& error)
 /*Exact Cubic Function tests*/
 void ExactCubicNoErrorTest(bool& error)
 {
-	spline::T_Waypoint waypoints;
-	for(double i = 0; i <= 1; i = i + 0.2)
-	{
-		waypoints.push_back(std::make_pair(i,point_t(i,i,i)));
-	}
-	exact_cubic_t exactCubic(waypoints.begin(), waypoints.end());
-	point_t res1;
-	try
-	{
-		exactCubic(0);
-		exactCubic(1);
-	}
-	catch(...)
-	{
-		error = true;
-		std::cout << "Evaluation of ExactCubicNoErrorTest error\n";
-	}
-	error = true;
-	try
-	{
-		exactCubic(1.2);
-	}
-	catch(...)
-	{
-		error = false;
-	}
-	if(error)
-	{
-		std::cout << "Evaluation of exactCubic cf error, 1.2 should be an out of range value\n";
-	}
-	if(exactCubic.max() != 1)
-	{
-		error = true;
-		std::cout << "Evaluation of exactCubic error, MaxBound should be equal to 1\n";
-	}
-	if(exactCubic.min() != 0)
-	{
-		error = true;
-		std::cout << "Evaluation of exactCubic error, MinBound should be equal to 1\n";
-	}
+    spline::T_Waypoint waypoints;
+    for(double i = 0; i <= 1; i = i + 0.2)
+    {
+        waypoints.push_back(std::make_pair(i,point_t(i,i,i)));
+    }
+    exact_cubic_t exactCubic(waypoints.begin(), waypoints.end());
+    point_t res1;
+    try
+    {
+        exactCubic(0);
+        exactCubic(1);
+    }
+    catch(...)
+    {
+        error = true;
+        std::cout << "Evaluation of ExactCubicNoErrorTest error\n";
+    }
+    error = true;
+    try
+    {
+        exactCubic(1.2);
+    }
+    catch(...)
+    {
+        error = false;
+    }
+    if(error)
+    {
+        std::cout << "Evaluation of exactCubic cf error, 1.2 should be an out of range value\n";
+    }
+    if(exactCubic.max() != 1)
+    {
+        error = true;
+        std::cout << "Evaluation of exactCubic error, MaxBound should be equal to 1\n";
+    }
+    if(exactCubic.min() != 0)
+    {
+        error = true;
+        std::cout << "Evaluation of exactCubic error, MinBound should be equal to 1\n";
+    }
 }
 
 
 /*Exact Cubic Function tests*/
 void ExactCubicTwoPointsTest(bool& error)
 {
-	spline::T_Waypoint waypoints;
-	for(double i = 0; i < 2; ++i)
-	{
-		waypoints.push_back(std::make_pair(i,point_t(i,i,i)));
-	}
-	exact_cubic_t exactCubic(waypoints.begin(), waypoints.end());
+    spline::T_Waypoint waypoints;
+    for(double i = 0; i < 2; ++i)
+    {
+        waypoints.push_back(std::make_pair(i,point_t(i,i,i)));
+    }
+    exact_cubic_t exactCubic(waypoints.begin(), waypoints.end());
 
-	point_t res1 = exactCubic(0);
-	std::string errmsg("in ExactCubic 2 points Error While checking that given wayPoints  are crossed (expected / obtained)");
-	ComparePoints(point_t(0,0,0), res1, errmsg, error);
+    point_t res1 = exactCubic(0);
+    std::string errmsg("in ExactCubic 2 points Error While checking that given wayPoints  are crossed (expected / obtained)");
+    ComparePoints(point_t(0,0,0), res1, errmsg, error);
 
-	res1 = exactCubic(1);
-	ComparePoints(point_t(1,1,1), res1, errmsg, error);
+    res1 = exactCubic(1);
+    ComparePoints(point_t(1,1,1), res1, errmsg, error);
 }
 
 void ExactCubicOneDimTest(bool& error)
 {
-	spline::T_WaypointOne waypoints;
-	point_one zero; zero(0,0) = 9;
-	point_one one; one(0,0) = 14;
-	point_one two; two(0,0) = 25;
-	waypoints.push_back(std::make_pair(0., zero));
-	waypoints.push_back(std::make_pair(1., one));
-	waypoints.push_back(std::make_pair(2., two));
-	exact_cubic_one exactCubic(waypoints.begin(), waypoints.end());
+    spline::T_WaypointOne waypoints;
+    point_one zero; zero(0,0) = 9;
+    point_one one; one(0,0) = 14;
+    point_one two; two(0,0) = 25;
+    waypoints.push_back(std::make_pair(0., zero));
+    waypoints.push_back(std::make_pair(1., one));
+    waypoints.push_back(std::make_pair(2., two));
+    exact_cubic_one exactCubic(waypoints.begin(), waypoints.end());
 
-	point_one res1 = exactCubic(0);
-	std::string errmsg("in ExactCubicOneDim Error While checking that given wayPoints  are crossed (expected / obtained)");
-	ComparePoints(zero, res1, errmsg, error);
+    point_one res1 = exactCubic(0);
+    std::string errmsg("in ExactCubicOneDim Error While checking that given wayPoints  are crossed (expected / obtained)");
+    ComparePoints(zero, res1, errmsg, error);
 
-	res1 = exactCubic(1);
-	ComparePoints(one, res1, errmsg, error);
+    res1 = exactCubic(1);
+    ComparePoints(one, res1, errmsg, error);
 }
 
 void CheckWayPointConstraint(const std::string& errmsg, const double step, const spline::T_Waypoint& /*wayPoints*/, const exact_cubic_t* curve, bool& error )
@@ -534,11 +534,11 @@ void CheckDerivative(const std::string& errmsg, const double eval_point, const s
 
 void ExactCubicPointsCrossedTest(bool& error)
 {
-	spline::T_Waypoint waypoints;
-	for(double i = 0; i <= 1; i = i + 0.2)
-	{
-		waypoints.push_back(std::make_pair(i,point_t(i,i,i)));
-	}
+    spline::T_Waypoint waypoints;
+    for(double i = 0; i <= 1; i = i + 0.2)
+    {
+        waypoints.push_back(std::make_pair(i,point_t(i,i,i)));
+    }
     exact_cubic_t exactCubic(waypoints.begin(), waypoints.end());
     std::string errmsg("Error While checking that given wayPoints are crossed (expected / obtained)");
     CheckWayPointConstraint(errmsg, 0.2, waypoints, &exactCubic, error);
@@ -935,14 +935,14 @@ enum vartype
 
 bool isVar(const linear_variable_t& var)
 {
-    return var.A_ == linear_variable_t::matrix_t::Identity() &&
-           var.b_ == linear_variable_t::point_t::Zero();
+    return var.B() == linear_variable_t::matrix_dim_t::Identity() &&
+           var.c()== linear_variable_t::point_dim_t::Zero();
 }
 
 bool isConstant(const linear_variable_t& var)
 {
-    return var.A_ == linear_variable_t::matrix_t::Zero() &&
-           var.b_ != linear_variable_t::point_t::Zero();
+    return var.B() == linear_variable_t::matrix_dim_t::Zero() &&
+           var.c() != linear_variable_t::point_dim_t::Zero();
 }
 
 /*bool isMixed(const linear_variable_t& var)
@@ -963,7 +963,7 @@ void checksequence(const T_linear_variable_t& vars, vartype* expected,
                    const std::string testname, bool& error)
 {
     int i =0;
-    for(variables_t::CIT_var_t cit = vars.begin();
+    for(CIT_linear_variable_t cit = vars.begin();
         cit != vars.end(); ++cit, ++i)
     {
         if(! checkValue(*cit, expected[i]))
@@ -1308,16 +1308,16 @@ static const std::string path = "../../tests/data/";
 void BezierLinearProblemsetupLoadProblem(bool& error)
 {
     problem_definition_t pDef = loadproblem(path+"test.pb");
-    problem_data_t pData = setup_control_points<point_t, 3, double>(pDef);
-    problem_t prob;
-    initInequalityMatrix<point_t,3,double>(pDef,pData,prob);
+    //problem_data_t pData = setup_control_points<point_t, 3, double>(pDef);
+    problem_t prob = generate_problem<point_t, 3, double>(pDef);
+    //initInequalityMatrix<point_t,3,double>(pDef,pData,prob);
 }
 
 int main(int /*argc*/, char** /*argv[]*/)
 {
     std::cout << "performing tests... \n";
     bool error = false;
-    CubicFunctionTest(error);
+    /*CubicFunctionTest(error);
     ExactCubicNoErrorTest(error);
     ExactCubicPointsCrossedTest(error); // checks that given wayPoints are crossed
     ExactCubicTwoPointsTest(error);
@@ -1335,20 +1335,20 @@ int main(int /*argc*/, char** /*argv[]*/)
     BezierDerivativeCurveTimeReparametrizationTest(error);
     BezierToPolynomConversionTest(error);
     BezierEvalDeCasteljau(error);
-    BezierSplitCurve(error);
+    BezierSplitCurve(error);*/
     BezierLinearProblemsetup_control_pointsNoConstraint(error);
     BezierLinearProblemsetup_control_pointsVarCombinatorialInit(error);
     BezierLinearProblemsetup_control_pointsVarCombinatorialEnd(error);
     BezierLinearProblemsetup_control_pointsVarCombinatorialMix(error);
     BezierLinearProblemsetupLoadProblem(error);
     if(error)
-	{
+    {
         std::cout << "There were some errors\n";
-		return -1;
-	}
-	else
-	{
-		std::cout << "no errors found \n";
-		return 0;
-	}
+        return -1;
+    }
+    else
+    {
+        std::cout << "no errors found \n";
+        return 0;
+    }
 }

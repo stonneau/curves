@@ -129,6 +129,21 @@ BOOST_PYTHON_MODULE(hpp_spline)
             .def("addInequality", &add_ineq_at)
         ;
 
+
+    class_<cost_function_t >
+        ("cost", no_init)
+        .add_property("quadratic", &cost_t_quad)
+        .add_property("linear", &cost_t_linear)
+        ;
+
+    class_<problem_t>
+        ("problem", init<>())
+        .add_property("cost", &problem_t_cost)
+        .add_property("A", &problem_t_ineqMatrix)
+        .add_property("b", &problem_t_ineqVector)
+        ;
+
+
     def("setupControlPoints", &setup_control_points_3_t);
     def("generate_problem", &generate_problem_3_t);
 

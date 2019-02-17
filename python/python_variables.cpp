@@ -26,12 +26,32 @@ problem_data_t setup_control_points_3_t(problem_definition_t &pDef)
     return pData;//return new problem_data_t(pData);
 }
 
-MatrixVector generate_problem_3_t(const problem_definition_t &pDef)
+
+cost_function_t problem_t_cost(const problem_t& p)
 {
-    problem_t prob = generate_problem<point_t,dim,real>(pDef);
-    MatrixVector res;
-    res.res = std::make_pair(prob.ineqMatrix,prob.ineqVector);
-    return res;
+    return p.cost;
+}
+Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> problem_t_ineqMatrix(const problem_t& p)
+{
+    return p.ineqMatrix;
+}
+Eigen::Matrix<real, Eigen::Dynamic, 1> problem_t_ineqVector(const problem_t& p)
+{
+    return p.ineqVector;
+}
+
+Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> cost_t_quad(const cost_function_t& p)
+{
+    return p.quadratic;
+}
+Eigen::Matrix<real, Eigen::Dynamic, 1> cost_t_linear(const cost_function_t & p)
+{
+    return p.linear;
+}
+
+problem_t generate_problem_3_t(const problem_definition_t &pDef)
+{
+    return generate_problem<point_t,dim,real>(pDef);
 }
 
 void set_pd_flag(problem_definition_t* pDef, const int flag)
@@ -126,21 +146,16 @@ std::vector<linear_variable_3_t> matrix3DFromEigenArray(const point_list_t& matr
     return res;
 }
 
-variables_3_t fillWithZeros(const linear_variable_3_t& var, const std::size_t totalvar, const std::size_t i)
+linear_variable_3_t fillWithZeros(const linear_variable_3_t& var, const std::size_t totalvar, const std::size_t i)
 {
-    variables_3_t res;
-    std::vector<linear_variable_3_t>& vars = res.variables_;
-    for (std::size_t idx = 0; idx < i; ++idx)
-        vars.push_back(linear_variable_3_t::Zero());
-    vars.push_back(var);
-    for (std::size_t idx = i+1; idx < totalvar; ++idx)
-        vars.push_back(linear_variable_3_t::Zero());
-    return res;
+    linear_variable_3_t::matrix_dim_x_t B(linear_variable_3_t::matrix_dim_x_t::Zero(dim,totalvar*dim));
+    B.block(0,dim*i,dim,dim) = var.B();
+    return linear_variable_3_t (B,var.c());
 }
 
-std::vector<variables_3_t> computeLinearControlPoints(const point_list_t& matrices, const point_list_t& vectors)
+std::vector<linear_variable_3_t> computeLinearControlPoints(const point_list_t& matrices, const point_list_t& vectors)
 {
-    std::vector<variables_3_t> res;
+    std::vector<linear_variable_3_t> res;
     std::vector<linear_variable_3_t> variables = matrix3DFromEigenArray(matrices, vectors);
     // now need to fill all this with zeros...
     std::size_t totalvar = variables.size();
@@ -152,13 +167,13 @@ std::vector<variables_3_t> computeLinearControlPoints(const point_list_t& matric
 /*linear variable control points*/
 bezier_linear_variable_t* wrapBezierLinearConstructor(const point_list_t& matrices, const point_list_t& vectors)
 {
-    std::vector<variables_3_t> asVector = computeLinearControlPoints(matrices, vectors);
+    std::vector<linear_variable_3_t> asVector = computeLinearControlPoints(matrices, vectors);
     return new bezier_linear_variable_t(asVector.begin(), asVector.end(), 1.) ;
 }
 
 bezier_linear_variable_t* wrapBezierLinearConstructorBounds(const point_list_t& matrices, const point_list_t& vectors, const real ub)
 {
-    std::vector<variables_3_t> asVector = computeLinearControlPoints(matrices, vectors);
+    std::vector<linear_variable_3_t> asVector = computeLinearControlPoints(matrices, vectors);
     return new bezier_linear_variable_t(asVector.begin(), asVector.end(), ub) ;
 }
 
@@ -170,20 +185,15 @@ MatrixVector*
     typedef typename bezier_linear_variable_t::t_point_t::const_iterator cit_point;
     const t_point& wps = self.waypoints();
     // retrieve num variables.
-    std::size_t dim = wps[0].variables_.size()*3;
+    std::size_t dim = wps[0].B().cols();
     Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> matrices (dim,wps.size() * 3);
-    Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> vectors  (dim,wps.size());
-    int col = 0;
-    for(cit_point cit = wps.begin(); cit != wps.end(); ++cit, ++col)
+    Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> vectors =
+            Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic>::Zero(3,wps.size());
+    int i = 0;
+    for(cit_point cit = wps.begin(); cit != wps.end(); ++cit, ++i)
     {
-        const std::vector<linear_variable_3_t>& variables = cit->variables_;
-        int i = 0;
-        for(std::vector<linear_variable_3_t>::const_iterator varit = variables.begin();
-            varit != variables.end(); ++varit, i+=3)
-        {
-            vectors.block<3,1>(i,col)   =  varit->b_;
-            matrices.block<3,3>(i,col*3) = varit->A_;
-        }
+        matrices.block(0,i*3,dim,3) = cit->B().transpose();
+        vectors.block<3,1>(0,i)   =  cit->c();
     }
     MatrixVector* res (new MatrixVector);
     res->res = std::make_pair(matrices, vectors);

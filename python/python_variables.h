@@ -4,6 +4,7 @@
 #include "python_definitions.h"
 #include "hpp/spline/optimization/definitions.h"
 #include "hpp/spline/optimization/linear_problem.h"
+#include "hpp/spline/optimization/quadratic_cost.h"
 
 #include <vector>
 
@@ -17,9 +18,9 @@ namespace optimization
 {
 static const int dim = 3;
 typedef linear_variable<dim, real> linear_variable_3_t;
-typedef variables<linear_variable_3_t> variables_3_t;
-typedef bezier_curve  <real, real, dim, true, variables_3_t> bezier_linear_variable_t;
+typedef bezier_curve  <real, real, dim, true, linear_variable_3_t> bezier_linear_variable_t;
 typedef problem_definition<point_t, dim, real> problem_definition_t;
+typedef cost_function<real> cost_function_t;
 typedef problem_data<point_t, dim, real>problem_data_t;
 typedef problem<point_t, dim, real> problem_t;
 typedef spline::curve_constraints<point_t> curve_constraints_t;
@@ -47,7 +48,13 @@ struct MatrixVector
     Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> b() {return res.second;}
 };
 
-MatrixVector generate_problem_3_t(const problem_definition_t &pDef);
+cost_function_t problem_t_cost(const problem_t& p);
+Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> problem_t_ineqMatrix(const problem_t& p);
+Eigen::Matrix<real, Eigen::Dynamic, 1> problem_t_ineqVector(const problem_t& p);
+Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> cost_t_quad(const cost_function_t& p);
+Eigen::Matrix<real, Eigen::Dynamic, 1> cost_t_linear(const cost_function_t & p);
+
+problem_t generate_problem_3_t(const problem_definition_t &pDef);
 
 MatrixVector* wayPointsToLists(const bezier_linear_variable_t& self);
 

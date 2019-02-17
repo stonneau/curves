@@ -135,7 +135,7 @@ def gen(save = False):
         return computeTrajectory(testConstant,splits, save), testConstant
 
 res = None
-for i in range(100):
+for i in range(1):
         res = gen(False)
         #~ if res[0] != None:
                 #~ break

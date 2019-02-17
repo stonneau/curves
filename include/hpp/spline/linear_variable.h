@@ -22,178 +22,146 @@
 namespace spline
 {
 template <int Dim, typename Numeric=double>
-struct linear_variable{
-    typedef Numeric num_t;
-    typedef Eigen::Matrix<num_t, Dim, Dim> matrix_t;
-    typedef Eigen::Matrix<num_t, Dim, 1> point_t;
-
+struct linear_variable
+{
+    typedef Eigen::Matrix<Numeric, Dim, Dim> matrix_dim_t;
+    typedef Eigen::Matrix<Numeric, Dim, Eigen::Dynamic> matrix_dim_x_t;
+    typedef Eigen::Matrix<Numeric, Dim, 1> point_dim_t;
+    typedef Eigen::Matrix<Numeric, Eigen::Dynamic, 1> vectord_t;
     typedef linear_variable<Dim, Numeric> linear_variable_t;
 
-    matrix_t A_;
-    point_t b_;
+    linear_variable(): B_(matrix_dim_t::Identity()), c_(point_dim_t::Zero()){} //variable
+    linear_variable(const point_dim_t& c):B_(matrix_dim_t::Zero()),c_(c) {} // constant
+    linear_variable(const matrix_dim_x_t& B, const point_dim_t& c):B_(B),c_(c) {} //mixed
 
-    linear_variable(): A_(matrix_t::Identity()), b_(point_t::Zero()){} //variable
-    linear_variable(const point_t& b):A_(matrix_t::Zero()),b_(b) {} // constant
-    linear_variable(const matrix_t& A, const point_t& b):A_(A),b_(b) {} //mixed
+    // linear evaluation
+    point_dim_t operator()(const Eigen::Ref<const point_dim_t>& val) const
+    {
+        return B() * val + c();
+    }
 
+    linear_variable_t& operator+=(const linear_variable_t& w1)
+    {
+        // handling zero case
+        if(c_.rows() == 0)
+        {
+            this->B_ = w1.B_;
+            this->c_ = w1.c_;
+        }
+        else
+        {
+            this->B_ += w1.B_;
+            this->c_ += w1.c_;
+        }
+        return *this;
+    }
+    linear_variable_t& operator-=(const linear_variable_t& w1)
+    {
+        // handling zero case
+        if(c_.rows() == 0)
+        {
+            this->B_ = w1.B_;
+            this->c_ = w1.c_;
+        }
+        else
+        {
+            this->B_ -= w1.B_;
+            this->c_ -= w1.c_;
+        }
+        return *this;
+    }
 
-    linear_variable& operator+=(const linear_variable& w1)
+    static linear_variable_t Zero(size_t /*dim=0*/){
+        return linear_variable_t(matrix_dim_t::Zero(), vectord_t::Zero(0));
+    }
+
+    const matrix_dim_x_t& B() const {return B_;}
+    const point_dim_t& c () const {return c_;}
+
+private:
+    matrix_dim_x_t B_;
+    point_dim_t c_;
+};
+
+template <typename Numeric=double>
+struct quadratic_variable
+{
+    typedef Eigen::Matrix<Numeric, Eigen::Dynamic, Eigen::Dynamic> matrix_x_t;
+    typedef Eigen::Matrix<Numeric, Eigen::Dynamic, 1> point_t;
+
+    quadratic_variable(const matrix_x_t& A, const point_t& b, const Numeric c = 0):
+        c_(c),
+        b_(b),
+        A_(A){assert(A.cols() == b.rows()) && A.cols() == A.rows();}
+
+    quadratic_variable(const point_t& b, const Numeric c = 0):
+        c_(c),
+        b_(b),
+        A_(matrix_x_t::Identity(b.rows())){}
+
+    quadratic_variable(const matrix_x_t& A, const Numeric c = 0):
+        c_(c),
+        b_(point_t::Zero(A.cols())),
+        A_(matrix_x_t::Identity(b.rows())){assert(A.cols() == A.rows());}
+
+    // linear evaluation
+    Numeric operator()(const Eigen::Ref<const point_t>& val) const
+    {
+        return val.transpose() * A() * val + b().transpose() * val + c();
+    }
+
+    quadratic_variable& operator+=(const quadratic_variable& w1)
     {
         this->A_ += w1.A_;
         this->b_ += w1.b_;
+        this->c_ += w1.c_;
         return *this;
     }
-    linear_variable& operator-=(const linear_variable& w1)
+    quadratic_variable& operator-=(const quadratic_variable& w1)
     {
         this->A_ -= w1.A_;
         this->b_ -= w1.b_;
+        this->c_ -= w1.c_;
         return *this;
     }
 
-    static linear_variable_t Zero(size_t dim=0){
-        linear_variable_t w;
-        w.A_  = matrix_t::Zero();
-        w.b_  = point_t::Zero();
-        return w;
-    }
-};
+    matrix_x_t& A() const {return A_;}
+    point_t&  b () const {return b_;}
+    Numeric&  c () const {return c_;}
 
-
-template<typename Var>
-struct variables{
-    typedef Var var_t;
-    typedef variables<Var> variables_t;
-
-    typedef std::vector<var_t> T_var_t;
-    typedef typename T_var_t::iterator  IT_var_t;
-    typedef typename T_var_t::const_iterator CIT_var_t;
-
-    T_var_t variables_;
-
-    variables() {}
-
-    variables& operator+=(const variables& w1)
-    {
-        if(variables_.size() == 0)
-            variables_ = w1.variables_;
-        else if (w1.variables_.size() !=0)
-        {
-            assert(variables_.size() == w1.variables_.size());
-            CIT_var_t cit = w1.variables_.begin();
-            for(IT_var_t it = variables_.begin(); it != variables_.end(); ++it, ++cit)
-                (*it)+=(*cit);
-        }
-        return *this;
-    }
-
-    variables& operator-=(const variables& w1)
-    {
-        if(variables_.size() == 0)
-            variables_ = w1.variables_;
-        else if (w1.variables_.size() !=0)
-        {
-            assert(variables_.size() == w1.variables_.size());
-            CIT_var_t cit = w1.variables_.begin();
-            for(IT_var_t it = variables_.begin(); it != variables_.end(); ++it, ++cit)
-                (*it)-=(*cit);
-        }
-        return *this;
-    }
-
-    static variables_t Zero(size_t /*dim*/){
-        variables_t w;
-        return w;
-    }
+private:
+    matrix_x_t A_;
+    point_t b_;
+    Numeric c_;
 };
 
 template <int D, typename N>
 inline linear_variable<D,N> operator+(const linear_variable<D,N>& w1, const linear_variable<D,N>& w2)
 {
-    return linear_variable<D,N>(w1.A_ + w2.A_, w1.b_ + w2.b_);
+    linear_variable<D,N> res(w1.B(), w2.c());
+    return res+=w2;
 }
 
 template <int D, typename N>
 linear_variable<D,N> operator-(const linear_variable<D,N>& w1, const linear_variable<D,N>& w2)
 {
-    return linear_variable<D,N>(w1.A_ - w2.A_, w1.b_ - w2.b_);
+    linear_variable<D,N> res(w1.B(), w2.c());
+    return res-=w2;
 }
 
 template <int D, typename N>
 linear_variable<D,N> operator*(const double k, const linear_variable<D,N>& w){
-    return linear_variable<D,N>(k*w.A_,k*w.b_);
+    return linear_variable<D,N>(k*w.B(),k*w.c());
 }
 
 template <int D, typename N>
 linear_variable<D,N> operator*(const linear_variable<D,N>& w,const double k){
-    return linear_variable<D,N>(k*w.A_,k*w.b_);
+    return linear_variable<D,N>(k*w.B(),k*w.c());
 }
 
 template <int D, typename N>
 linear_variable<D,N> operator/(const linear_variable<D,N>& w,const double k){
-    return linear_variable<D,N>(w.A_/k,w.b_/k);
-}
-
-template<typename V>
-variables<V> operator+(const variables<V>& w1, const variables<V>& w2)
-{
-    if(w2.variables_.size() == 0)
-        return w1;
-    if(w1.variables_.size() == 0)
-        return w2;
-    variables<V> res;
-    assert(w2.variables_.size() == w1.variables_.size());
-    typename variables<V>::CIT_var_t cit = w1.variables_.begin();
-    for(typename variables<V>::CIT_var_t cit2 = w2.variables_.begin(); cit2 != w2.variables_.end(); ++cit, ++cit2)
-        res.variables_.push_back((*cit)+(*cit2));
-    return res;
-}
-
-template<typename V>
-variables<V> operator-(const variables<V>& w1, const variables<V>& w2)
-{
-    if(w2.variables_.size() == 0)
-        return w1;
-    if(w1.variables_.size() == 0)
-        return w2;
-    variables<V> res;
-    assert(w2.variables_.size() == w1.variables_.size());
-    typename variables<V>::CIT_var_t cit = w1.variables_.begin();
-    for(typename variables<V>::CIT_var_t cit2 = w2.variables_.begin(); cit2 != w2.variables_.end(); ++cit, ++cit2)
-        res.variables_.push_back((*cit)-(*cit2));
-    return res;
-}
-
-template<typename V>
-variables<V> operator*(const double k, const variables<V>& w)
-{
-    if(w.variables_.size() == 0)
-        return w;
-    variables<V> res;
-    for(typename variables<V>::CIT_var_t cit = w.variables_.begin(); cit != w.variables_.end(); ++cit)
-        res.variables_.push_back(k*(*cit));
-    return res;
-}
-
-template<typename V>
-variables<V> operator*(const variables<V>& w,const double k)
-{
-    if(w.variables_.size() == 0)
-        return w;
-    variables<V> res;
-    for(typename variables<V>::CIT_var_t cit = w.variables_.begin(); cit != w.variables_.end(); ++cit)
-        res.variables_.push_back((*cit)*k);
-    return res;
-}
-
-template<typename V>
-variables<V> operator/(const variables<V>& w,const double k)
-{
-    if(w.variables_.size() == 0)
-        return w;
-    variables<V> res;
-    for(typename variables<V>::CIT_var_t cit = w.variables_.begin(); cit != w.variables_.end(); ++cit)
-        res.variables_.push_back((*cit)/k);
-    return res;
+    return linear_variable<D,N>(w.B()/k,w.c()/k);
 }
 
 } // namespace spline

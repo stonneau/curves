@@ -22,14 +22,6 @@ namespace spline
 namespace  optimization
 {
 
-template<typename Point, int Dim, typename Numeric>
-struct problem
-{
-    Eigen::Matrix<Numeric,Eigen::Dynamic, Eigen::Dynamic> ineqMatrix;
-    Eigen::Matrix<Numeric,Eigen::Dynamic, 1> ineqVector;
-};
-
-
 enum constraint_flag{
     INIT_POS  = 0x001,
     INIT_VEL  = 0x002,
@@ -40,6 +32,28 @@ enum constraint_flag{
     ALL       = 0x03f,
     NONE      = 0x100
 };
+
+
+template<typename Numeric>
+struct cost_function
+{
+    typedef Eigen::Matrix< Numeric , Eigen::Dynamic , 1> vectorx_t;
+    typedef Eigen::Matrix< Numeric , Eigen::Dynamic , Eigen::Dynamic> matrix_x_t;
+
+    matrix_x_t quadratic;
+    vectorx_t linear;
+    Numeric constant;
+};
+
+
+template<typename Point, int Dim, typename Numeric>
+struct problem
+{
+    Eigen::Matrix<Numeric,Eigen::Dynamic, Eigen::Dynamic> ineqMatrix;
+    Eigen::Matrix<Numeric,Eigen::Dynamic, 1> ineqVector;
+    cost_function<Numeric> cost;
+};
+
 
 template<typename Point, int Dim, typename Numeric>
 struct problem_definition

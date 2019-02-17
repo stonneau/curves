@@ -11,6 +11,7 @@
 #include "hpp/spline/helpers/effector_spline_rotation.h"
 #include "hpp/spline/bezier_polynom_conversion.h"
 #include "hpp/spline/optimization/linear_problem.h"
+#include "hpp/spline/optimization/quadratic_cost.h"
 #include "hpp/spline/optimization/details.h"
 
 #include <iostream>
@@ -41,8 +42,8 @@ namespace optimization
 {
 typedef curve_constraints<point_t> constraint_linear;
 typedef linear_variable<3, double> linear_variable_t;
-typedef variables<linear_variable_t> variables_t;
-typedef variables_t::T_var_t T_linear_variable_t;
+typedef std::vector<linear_variable_t> T_linear_variable_t;
+typedef T_linear_variable_t::const_iterator CIT_linear_variable_t;
 typedef std::pair<std::size_t, std::size_t >   pair_size_t;
 typedef std::pair<T_linear_variable_t, pair_size_t > var_pair_t;
 typedef problem_data<point_t, 3, double> problem_data_t;
