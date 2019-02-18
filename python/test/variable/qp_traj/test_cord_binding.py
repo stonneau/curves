@@ -123,7 +123,7 @@ def genProblemDef(numvars = 3, numcurves= 4):
         valDep = array([[np.random.uniform(0., 1.), np.random.uniform(0.,5.), 0. ]]).T
         valEnd = array([[np.random.uniform(5., 10.), np.random.uniform(0.,5.), 0.]]).T
         pDef = problemDefinition()
-        pDef.flag =  int(constraint_flag.END_POS) | int(constraint_flag.INIT_POS)
+        #~ pDef.flag =  int(constraint_flag.END_POS) | int(constraint_flag.INIT_POS)
         #~ pDef.flag =  constraint_flag.INIT_POS
         #~ pDef.flag =  constraint_flag.END_POS
         pDef.start = valDep
@@ -147,23 +147,31 @@ def __addZeroConstants(res, pDef):
                 r = r + [0.,0.,0.]
         return array(r)
         
+import time
+        
 def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
         global idxFile
         global colors
         bezVar = __getbezVar(pDef)
         subs = bezVar.split(pDef.splits.reshape((-1)).tolist())
+        a = time.clock()
         ineq = generate_problem(pDef);
+        b = time.clock()
+        print "clock ", b-a
         
         #qp vars
         dimVar = ineq.cost.A.shape[0]
         P = ineq.cost.A      
-        q = ineq.cost.b.flatten()
+        q = -ineq.cost.b.flatten()
+        print "q", q
         G = zeros([2,dimVar])
         h = zeros(2)
         G[0,-1] =  1 ; h[0]=1.
         G[1,-1] = -1 ; h[1]=0.
-        G = vstack([G,ineq.A])
-        h = concatvec(h,ineq.b.reshape((-1)))
+        #~ G = vstack([G,ineq.A])
+        G = ineq.A
+        #~ h = concatvec(h,ineq.b.reshape((-1)))
+        h = ineq.b.reshape((-1))
         
         dimExtra = 0
         
@@ -199,7 +207,8 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
                 
                 #~ return final
                 
-                q2 = zeros(q.shape[0]); q2[3]=1
+                #~ q2 = zeros(q.shape[0]); q2[3]=1
+                q2 = zeros(q.shape[0]); 
                 res = quadprog_solve_qp(identity(P.shape[0]) *0.001,q2 , G=G, h=h, C=C, d=d)
                 res = __addZeroConstants(res, pDef)
                 #plot bezier
@@ -236,7 +245,7 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
 
 #solve and gen problem
 def gen(save = False):
-        pDef = genProblemDef(10,4)
+        pDef = genProblemDef(8,4)
         return computeTrajectory(pDef, save)
 
 res = None
