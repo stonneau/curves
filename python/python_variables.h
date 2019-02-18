@@ -20,7 +20,7 @@ static const int dim = 3;
 typedef linear_variable<dim, real> linear_variable_3_t;
 typedef bezier_curve  <real, real, dim, true, linear_variable_3_t> bezier_linear_variable_t;
 typedef problem_definition<point_t, dim, real> problem_definition_t;
-typedef cost_function<real> cost_function_t;
+typedef quadratic_variable<real> quadratic_variable_t;
 typedef problem_data<point_t, dim, real>problem_data_t;
 typedef problem<point_t, dim, real> problem_t;
 typedef spline::curve_constraints<point_t> curve_constraints_t;
@@ -48,11 +48,12 @@ struct MatrixVector
     Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> b() {return res.second;}
 };
 
-cost_function_t problem_t_cost(const problem_t& p);
+quadratic_variable_t problem_t_cost(const problem_t& p);
 Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> problem_t_ineqMatrix(const problem_t& p);
 Eigen::Matrix<real, Eigen::Dynamic, 1> problem_t_ineqVector(const problem_t& p);
-Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> cost_t_quad(const cost_function_t& p);
-Eigen::Matrix<real, Eigen::Dynamic, 1> cost_t_linear(const cost_function_t & p);
+Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> cost_t_quad(const quadratic_variable_t& p);
+Eigen::Matrix<real, Eigen::Dynamic, 1> cost_t_linear(const quadratic_variable_t & p);
+real cost_t_constant(const quadratic_variable_t & p);
 
 problem_t generate_problem_3_t(const problem_definition_t &pDef);
 
@@ -76,7 +77,7 @@ void set_pd_flag(problem_definition_t* pDef, const int flag);
 void set_start(problem_definition_t* pDef, const point_t& val );
 void set_end(problem_definition_t* pDef, const point_t& val );
 void set_degree(problem_definition_t* pDef, const std::size_t val );
-void set_total_time(problem_definition_t* pDef, const std::size_t val );
+void set_total_time(problem_definition_t* pDef, const double val );
 void set_split_time(problem_definition_t* pDef, const Eigen::VectorXd& val );
 Eigen::VectorXd get_split_times(const problem_definition_t* pDef);
 constraint_flag get_pd_flag(const problem_definition_t* pDef);

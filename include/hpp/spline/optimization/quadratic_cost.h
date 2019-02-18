@@ -21,18 +21,23 @@ namespace  optimization
 {
 
 template<typename Point, int Dim, typename Numeric>
-/*std::pair<Eigen::Matrix<Numeric, Eigen::Dynamic, Eigen::Dynamic>,
-          Eigen::Matrix<Numeric, Eigen::Dynamic, 1> >*/
-cost_function<Numeric> compute_acceleration_cost(const problem_data<Point, Dim, Numeric>& pData)
+quadratic_variable<Numeric> compute_derivative_cost
+                    (const problem_data<Point, Dim, Numeric>& pData, const std::size_t num_derivate)
 {
     typedef bezier_curve<Numeric, Numeric, Dim, true,linear_variable<Dim, Numeric> > bezier_t;
     typedef typename bezier_t::t_point_t t_point_t;
     typedef typename t_point_t::const_iterator cit_point_t;
     // first, derivate twice to get acceleration
-    bezier_t acc = pData.bezier->compute_derivate(2);
+    bezier_t acc = pData.bezier->compute_derivate(num_derivate);
     const t_point_t& wps = acc.waypoints();
     return bezier_product<Point, Dim, Numeric, cit_point_t>
-            (pData,wps.begin(),wps.end(),wps.begin(),wps.end());
+            (wps.begin(),wps.end(),wps.begin(),wps.end());
+}
+
+template<typename Point, int Dim, typename Numeric>
+quadratic_variable<Numeric> compute_acceleration_cost(const problem_data<Point, Dim, Numeric>& pData)
+{
+    return compute_derivative_cost(pData,2);
 }
 } // namespace optimization
 } // namespace spline

@@ -212,28 +212,12 @@ template< typename Point, int Dim, typename Numeric, typename Bezier, typename T
 void bezierWaypointsToMatrixForm(const std::size_t startVariableIndex, const std::size_t numVariables,
                                  const Bezier& bezier, T_matrix_t& matrices, T_vector_t& vectors)
 {
-    typedef Eigen::Matrix<Numeric, Dim, Eigen::Dynamic> matrix_t;
-    typedef Eigen::Matrix<Numeric, Dim, 1> vector_t;
-    typedef linear_variable<Dim, Numeric> linear_variable_t;
     typedef typename Bezier::t_point_t t_point;
     typedef typename Bezier::t_point_t::const_iterator cit_point;
     const t_point& wps = bezier.waypoints();
     // each control has a linear expression depending on all variables
     for(cit_point cit = wps.begin(); cit != wps.end(); ++cit)
     {
-        /*matrix_t matCurrentWp = matrix_t::Zero(Dim, Dim*numVariables);
-        vector_t vecCurrentWp = vector_t::Zero();
-        const std::vector<linear_variable_t>& variables = cit->variables_;
-        for(typename variables_t::CIT_var_t varit = variables.begin();
-            varit != variables.end(); ++varit)
-                vecCurrentWp +=  varit->c();
-        //assert(variables.begin() + startVariableIndex + numVariables <= variables.end());
-        // loop only through variables that are not constant
-        // TODO??? allow to put constant everywhere ?
-        int col = 0;
-        for(typename variables_t::CIT_var_t  varit = variables.begin() + startVariableIndex;
-            varit != variables.begin() + startVariableIndex + numVariables; ++varit, col+=Dim)
-                matCurrentWp.block(0,col,Dim,Dim) =  varit->B();*/
         matrices.push_back(cit->B().block(0,startVariableIndex*Dim, Dim, numVariables*Dim));
         vectors.push_back(cit->c());
     }
@@ -320,49 +304,18 @@ void initInequalityMatrix
     assert (rows == currentRowIdx); // we filled all the constraints
 }
 
-/*template<typename Point, int Dim, typename Numeric>
-void vars_product(const variables<linear_variable<Dim, Numeric> >& vars1,
-             const variables<linear_variable<Dim, Numeric> >& vars2,
-             const Numeric ratio,
-             cost_function<Numeric>& res)
-{
-    typedef linear_variable<Dim, Numeric> linear_variable_t;
-    typedef variables<linear_variable_t> variables_t;
-    int i = 0, j=0;
-    for(typename variables_t::CIT_var_t cit1 = vars1.variables_.begin();
-        cit1 != vars1.variables_.end(); ++ cit1, ++i)
-    {
-        j = 0;
-        for(typename variables_t::CIT_var_t cit2 = vars2.variables_.begin();
-            cit2 != vars2.variables_.end(); ++cit2, ++j)
-        {
-            res.quadratic.block(i*Dim,j*Dim,Dim,Dim)+= ratio * cit1->A_.transpose() * cit2->B();
-            res.linear.segment(i*Dim,Dim)      += ratio * cit1->A_.transpose() * cit2->c();
-            res.linear.segment(j*Dim,Dim)      += ratio * cit2->A_.transpose() * cit1->c();
-            res.constant += ratio * cit1->c().dot(cit2->c());
-        }
-    }
-}*/
-
-
 template<typename Point, int Dim, typename Numeric, typename In >
-cost_function<Numeric> bezier_product(const problem_data<Point, Dim, Numeric>& problemData,
-                    In PointsBegin1, In PointsEnd1, In PointsBegin2, In PointsEnd2)
+quadratic_variable<Numeric> bezier_product(In PointsBegin1, In PointsEnd1, In PointsBegin2, In PointsEnd2)
 {
-    typedef Eigen::Matrix<Numeric, Eigen::Dynamic, Eigen::Dynamic> matrix_x_t;
     typedef Eigen::Matrix<Numeric, Eigen::Dynamic, 1> vector_x_t;
     Numeric nPoints1 = (Numeric)(std::distance(PointsBegin1,PointsEnd1)),
             nPoints2 = (Numeric)(std::distance(PointsBegin2,PointsEnd2));
     Numeric deg1 = nPoints1-1, deg2 = nPoints2 -1;
     Numeric newDeg = (Numeric)(deg1 + deg2);
-    int sizeMat =(int) (Dim *problemData.numControlPoints);
-    // the integral of the primitive will simply be the last_xpoints of the primitive,
-    // divided by the degree of the primitive, newDeg+1. We will store this in matrices for bilinear terms,
+    // the integral of the primitive will simply be the last control points of the primitive,
+    // divided by the degree of the primitive, newDeg. We will store this in matrices for bilinear terms,
     // and a vector for the linear terms, as well as another one for the constants.
-    cost_function<Numeric> res;
-    res.quadratic = matrix_x_t::Zero(sizeMat,sizeMat);
-    res.linear    = vector_x_t::Zero(sizeMat);
-    res.constant  = 0;
+    quadratic_variable<Numeric> res(vector_x_t::Zero(PointsBegin1->B().cols()));
     // depending on the index, the fraction coefficient of the bernstein polynom
     // is either the fraction given by  (i+j)/ (deg1+deg2), or 1 - (i+j)/ (deg1+deg2).
     // The trick is that the condition is given by whether the current index in
@@ -376,15 +329,11 @@ cost_function<Numeric> bezier_product(const problem_data<Point, Dim, Numeric>& p
         for(Numeric j =0; j < nPoints2; ++j, ++it2)
         {
             ratio = fabs(weight - (i+j)/newDeg);
-            //vars_product<Point,Dim,Numeric>(*it1,*it2,ratio,res);
+            res+= ((*it1) * (*it2)) * ratio;
             weight = fabs(weight - 1);
         }
     }
-    res.quadratic /= newDeg;
-    res.linear    /= newDeg;
-    res.constant  /= newDeg;
-    if (res.linear.norm() > 0.001)
-        std::cout << "linear" << res.linear <<std::endl;
+    res /= newDeg;
     return res;
 }
 

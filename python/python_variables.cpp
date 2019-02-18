@@ -27,7 +27,7 @@ problem_data_t setup_control_points_3_t(problem_definition_t &pDef)
 }
 
 
-cost_function_t problem_t_cost(const problem_t& p)
+quadratic_variable_t problem_t_cost(const problem_t& p)
 {
     return p.cost;
 }
@@ -40,14 +40,21 @@ Eigen::Matrix<real, Eigen::Dynamic, 1> problem_t_ineqVector(const problem_t& p)
     return p.ineqVector;
 }
 
-Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> cost_t_quad(const cost_function_t& p)
+Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> cost_t_quad(const quadratic_variable_t& p)
 {
-    return p.quadratic;
+    Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> A = p.A();
+    return A;
 }
-Eigen::Matrix<real, Eigen::Dynamic, 1> cost_t_linear(const cost_function_t & p)
+Eigen::Matrix<real, Eigen::Dynamic, 1> cost_t_linear(const quadratic_variable_t & p)
 {
-    return p.linear;
+    Eigen::Matrix<real, Eigen::Dynamic, 1> b = p.b();
+    return b;
 }
+real cost_t_constant(const quadratic_variable_t & p)
+{
+    return p.c();
+}
+
 
 problem_t generate_problem_3_t(const problem_definition_t &pDef)
 {
@@ -70,7 +77,7 @@ void set_degree(problem_definition_t* pDef, const std::size_t val )
 {
     pDef->degree = val;
 }
-void set_total_time(problem_definition_t* pDef, const std::size_t val )
+void set_total_time(problem_definition_t* pDef, const double val )
 {
     pDef->totalTime = val;
 }

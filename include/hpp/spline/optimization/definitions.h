@@ -34,7 +34,7 @@ enum constraint_flag{
 };
 
 
-template<typename Numeric>
+/*template<typename Numeric>
 struct cost_function
 {
     typedef Eigen::Matrix< Numeric , Eigen::Dynamic , 1> vectorx_t;
@@ -43,7 +43,7 @@ struct cost_function
     matrix_x_t quadratic;
     vectorx_t linear;
     Numeric constant;
-};
+};*/
 
 
 template<typename Point, int Dim, typename Numeric>
@@ -51,7 +51,7 @@ struct problem
 {
     Eigen::Matrix<Numeric,Eigen::Dynamic, Eigen::Dynamic> ineqMatrix;
     Eigen::Matrix<Numeric,Eigen::Dynamic, 1> ineqVector;
-    cost_function<Numeric> cost;
+    quadratic_variable<Numeric> cost;
 };
 
 
