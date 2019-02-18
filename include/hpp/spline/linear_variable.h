@@ -48,7 +48,7 @@ struct linear_variable
             this->B_ = w1.B_;
             this->c_ = w1.c_;
         }
-        else
+        else if(w1.c().rows() !=0)
         {
             this->B_ += w1.B_;
             this->c_ += w1.c_;
@@ -60,10 +60,10 @@ struct linear_variable
         // handling zero case
         if(c_.rows() == 0)
         {
-            this->B_ = w1.B_;
-            this->c_ = w1.c_;
+            this->B_ -= w1.B_;
+            this->c_ -= w1.c_;
         }
-        else
+        else if(w1.c().rows() !=0)
         {
             this->B_ -= w1.B_;
             this->c_ -= w1.c_;
@@ -145,7 +145,7 @@ struct quadratic_variable
             this->b_ = w1.b_;
             this->c_ = w1.c_;
         }
-        else
+        else if(w1.b().rows() !=0)
         {
             this->A_ += w1.A_;
             this->b_ += w1.b_;
@@ -157,16 +157,17 @@ struct quadratic_variable
     {
         if(b_.rows() == 0)
         {
-            this->A_ = w1.A_;
-            this->b_ = w1.b_;
-            this->c_ = w1.c_;
+            this->A_ = -w1.A_;
+            this->b_ = -w1.b_;
+            this->c_ = -w1.c_;
         }
-        else
+        else if(w1.b().rows() !=0)
         {
             this->A_ -= w1.A_;
             this->b_ -= w1.b_;
             this->c_ -= w1.c_;
         }
+        return *this;
     }
 
     quadratic_variable& operator/=(const double d)
@@ -228,7 +229,7 @@ inline quadratic_variable<N> operator*(const linear_variable<D,N>& w1, const lin
     matrix_x_t A1 = to_diagonal<N>(b1);
     matrix_x_t A2 = to_diagonal<N>(b2); //b1.array().square()
     // omitting all transposes since A matrices are diagonals
-    matrix_x_t  A = A1 * A2;
+    matrix_x_t  A = A1.transpose() * A2;
     point_t  b = A1.transpose() * b2 + A2.transpose() * b1;
     N c = w1.c().transpose() * w2.c();
     return quad_var_t(A,b,c);

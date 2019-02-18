@@ -14,6 +14,7 @@
 #include <hpp/spline/linear_variable.h>
 #include <hpp/spline/curve_constraint.h>
 #include <hpp/spline/optimization/definitions.h>
+#include <hpp/spline/bernstein.h>
 
 #include <Eigen/StdVector>
 
@@ -304,14 +305,29 @@ void initInequalityMatrix
     assert (rows == currentRowIdx); // we filled all the constraints
 }
 
+template<typename Point, int Dim, typename Numeric>
+quadratic_variable<Numeric> clip_constants(const problem_data<Point, Dim, Numeric>& pData,
+                                           const quadratic_variable<Numeric>& quad)
+{
+    typedef typename quadratic_variable<Numeric>::matrix_x_t matrix_x_t;
+    typedef typename quadratic_variable<Numeric>::point_t point_t;
+    int start  = (int)(pData.startVariableIndex*Dim);
+    int length = (int)(pData.numVariables*Dim);
+    matrix_x_t A = quad.A().block(start,start, length,length);
+    point_t b    = quad.b().segment(start,length);
+    return quadratic_variable<Numeric>(A,b,quad.c());
+}
+
 template<typename Point, int Dim, typename Numeric, typename In >
-quadratic_variable<Numeric> bezier_product(In PointsBegin1, In PointsEnd1, In PointsBegin2, In PointsEnd2)
+quadratic_variable<Numeric> bezier_product(
+        const problem_data<Point, Dim, Numeric>& pData, In PointsBegin1, In PointsEnd1, In PointsBegin2, In PointsEnd2)
 {
     typedef Eigen::Matrix<Numeric, Eigen::Dynamic, 1> vector_x_t;
-    Numeric nPoints1 = (Numeric)(std::distance(PointsBegin1,PointsEnd1)),
-            nPoints2 = (Numeric)(std::distance(PointsBegin2,PointsEnd2));
-    Numeric deg1 = nPoints1-1, deg2 = nPoints2 -1;
-    Numeric newDeg = (Numeric)(deg1 + deg2);
+    unsigned int nPoints1 = (std::distance(PointsBegin1,PointsEnd1)),
+                 nPoints2 = (std::distance(PointsBegin2,PointsEnd2));
+    assert(nPoints1 > 0); assert(nPoints2 > 0);
+    unsigned int deg1 = nPoints1-1, deg2 = nPoints2 -1;
+    unsigned int newDeg = (deg1 + deg2);
     // the integral of the primitive will simply be the last control points of the primitive,
     // divided by the degree of the primitive, newDeg. We will store this in matrices for bilinear terms,
     // and a vector for the linear terms, as well as another one for the constants.
@@ -321,20 +337,21 @@ quadratic_variable<Numeric> bezier_product(In PointsBegin1, In PointsEnd1, In Po
     // The trick is that the condition is given by whether the current index in
     // the combinatorial is odd or even.
     // time parametrization is not relevant for the cost
-    Numeric weight = 1; Numeric ratio;
-    In it1 = PointsBegin1;
-    for(Numeric i =0; i< nPoints1; ++i, ++it1)
+
+    Numeric ratio;
+    for(unsigned int i = 0; i < newDeg+1; ++i)
     {
-        In it2 = PointsBegin2;
-        for(Numeric j =0; j < nPoints2; ++j, ++it2)
+        unsigned int j = i > deg2 ? i-deg2 : 0;
+        for(; j< std::min(deg1,i)+1;++j)
         {
-            ratio = fabs(weight - (i+j)/newDeg);
-            res+= ((*it1) * (*it2)) * ratio;
-            weight = fabs(weight - 1);
+            ratio = (Numeric)(bin(deg1,j)*bin(deg2,i-j)) / (Numeric)(bin(newDeg,i));
+            In itj = PointsBegin1 + j ;
+            In iti = PointsBegin2 +(i-j) ;
+            res+= (*itj) * (*iti) * ratio;
         }
     }
-    res /= newDeg;
-    return res;
+    // now removing useless variables
+    return clip_constants(pData, res)/newDeg;
 }
 
 inline constraint_flag operator~(constraint_flag a)

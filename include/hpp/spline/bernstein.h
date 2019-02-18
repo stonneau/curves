@@ -23,10 +23,10 @@ namespace spline
 ///
 /// \brief Computes factorial of a number
 ///
-inline unsigned int fact(const unsigned int n)
+inline long unsigned int fact(const long unsigned int n)
 {
-    unsigned int res = 1;
-    for (unsigned int i=2 ; i <= n ; ++i)
+    long unsigned int res = 1;
+    for (long unsigned int i=2 ; i <= n ; ++i)
        res *= i;
     return res;
 }
@@ -34,7 +34,7 @@ inline unsigned int fact(const unsigned int n)
 ///
 /// \brief Computes a binomal coefficient
 ///
-inline unsigned int bin(const unsigned  int n, const unsigned  int k)
+inline long unsigned int bin(const long unsigned  int n, const long unsigned  int k)
 {
     return fact(n) / (fact(k) * fact(n - k));
 }
@@ -44,7 +44,7 @@ inline unsigned int bin(const unsigned  int n, const unsigned  int k)
 ///
 template <typename Numeric = double>
 struct Bern{
-Bern(const unsigned int m, const unsigned int i)
+Bern(const long unsigned int m, const long unsigned int i)
     :m_minus_i(m - i)
     ,i_(i)
     ,bin_m_i_(bin(m,i)) {}
@@ -67,10 +67,10 @@ Numeric bin_m_i_;
 /// \brief Computes all Bernstein polynomes for a certain degree
 ///
 template <typename Numeric>
-std::vector<Bern<Numeric> > makeBernstein(const unsigned int n)
+std::vector<Bern<Numeric> > makeBernstein(const long unsigned int n)
 {
     std::vector<Bern<Numeric> > res;
-    for(unsigned int i = 0; i<= n; ++i)
+    for(long unsigned int i = 0; i<= n; ++i)
         res.push_back(Bern<Numeric>(n, i));
     return res;
 }

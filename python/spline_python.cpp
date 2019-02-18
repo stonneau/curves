@@ -132,9 +132,9 @@ BOOST_PYTHON_MODULE(hpp_spline)
 
     class_<quadratic_variable_t >
         ("cost", no_init)
-        .add_property("quadratic", &cost_t_quad)
-        .add_property("linear", &cost_t_linear)
-        .add_property("constant", &cost_t_constant)
+        .add_property("A", &cost_t_quad)
+        .add_property("b", &cost_t_linear)
+        .add_property("c", &cost_t_constant)
         ;
 
     class_<problem_t>

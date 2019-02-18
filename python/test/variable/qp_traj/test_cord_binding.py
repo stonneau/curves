@@ -18,6 +18,8 @@ import uuid; uuid.uuid4().hex.upper()[0:6]
 ######################## generate problems ########################
 
 def genSplit(numCurves):
+        if (numCurves == 0):
+                return [-1]
         splits = []
         lastval = np.random.uniform(0., 1.)
         for i in range(numCurves):
@@ -112,8 +114,8 @@ def saveProblem(pDef):
 ######################## solve a given problem ########################
 
 
-colors=['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
-colors2=['g', 'r', 'c', 'm', 'y', 'k', 'w','b']
+colors=['b', 'g', 'r', 'c', 'm', 'y', 'k']
+colors2=[colors[len(colors)-1-i] for i in range(len(colors))]
 
 
 
@@ -129,7 +131,7 @@ def genProblemDef(numvars = 3, numcurves= 4):
         pDef.degree = numvars + 1
         pDef.splits = array([genSplit(numcurves)]).T        
         genConstraintsPerPhase(pDef, numcurves) #load random inequality constraints
-        #~ saveProblem(pDef)
+        saveProblem(pDef)
         return pDef
 
 def __getbezVar(pDef): #for plotting only
@@ -145,33 +147,18 @@ def __addZeroConstants(res, pDef):
                 r = r + [0.,0.,0.]
         return array(r)
         
-def __remZeroConstants(P, pDef):
-        r = P[:]
-        if (int)(constraint_flag.INIT_POS) & (int)(pDef.flag):
-                r = r[3:,3:];
-        if (int)(constraint_flag.END_POS) & (int)(pDef.flag):
-                r = r[:-3,:-3];
-        return r
-
 def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
         global idxFile
         global colors
         bezVar = __getbezVar(pDef)
         subs = bezVar.split(pDef.splits.reshape((-1)).tolist())
         ineq = generate_problem(pDef);
-        #generate random constraints for each line
-        line_current = [array([1.,1.,0.]), array([0.,1.,0.])]
         
         #qp vars
-        #remove cost for first and last points
-        accCost = accelerationcost(bezVar)
-        P = accCost[0]
-        #~ P = ineq.cost.quadratic
-        P = __remZeroConstants(P, pDef)
-        #~ P = P + identity(P.shape[0]) * 0.1        
-        q = zeros(P.shape[1])
-        P = identity(q.shape[0])
-        G = zeros([2,q.shape[0]])
+        dimVar = ineq.cost.A.shape[0]
+        P = ineq.cost.A      
+        q = ineq.cost.b.flatten()
+        G = zeros([2,dimVar])
         h = zeros(2)
         G[0,-1] =  1 ; h[0]=1.
         G[1,-1] = -1 ; h[1]=0.
@@ -181,16 +168,15 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
         dimExtra = 0
         
         C = None; d = None
-        #~ try:
-        if True:
-                res = quadprog_solve_qp(identity(q.shape[0]), q, G=G, h=h, C=C, d=d)
-                #~ res = quadprog_solve_qp(P, q, G=G, h=h, C=C, d=d)
+        try:
+        #~ if True:                        
+                res = quadprog_solve_qp(P, q, G=G, h=h, C=C, d=d)
                 res = __addZeroConstants(res, pDef)
                 #plot bezier
                 for i, bez in enumerate(subs):
                         color = colors[i]
                         test = bez.toBezier3(res[:])
-                        plotBezier(test, color)
+                        plotBezier(test, color, 4.)
                 if save:
                         plt.savefig(filename+str(idxFile))
                 #plot subs control points
@@ -198,11 +184,11 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
                         color = colors[i]
                         test = bez.toBezier3(res[:])
                         plotBezier(test, color)
-                        plotControlPoints(test, color)
+                        #~ plotControlPoints(test, color)
                 if save:
                         plt.savefig("subcp"+filename+str(idxFile))
                 final = bezVar.toBezier3(res[:])
-                plotControlPoints(final, "black")
+                #~ plotControlPoints(final, "black")
                 if save:
                         plt.savefig("cp"+filename+str(idxFile))
                 idxFile += 1
@@ -210,8 +196,11 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
                         #~ plt.close()
                 #~ else:
                         #~ plt.show()
-                        
-                res = quadprog_solve_qp(P, q, G=G, h=h, C=C, d=d)
+                
+                #~ return final
+                
+                q2 = zeros(q.shape[0]); q2[3]=1
+                res = quadprog_solve_qp(identity(P.shape[0]) *0.001,q2 , G=G, h=h, C=C, d=d)
                 res = __addZeroConstants(res, pDef)
                 #plot bezier
                 for i, bez in enumerate(subs):
@@ -225,11 +214,11 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
                         color = colors2[i]
                         test = bez.toBezier3(res[:])
                         plotBezier(test, color)
-                        plotControlPoints(test, color)
+                        #~ plotControlPoints(test, color)
                 if save:
                         plt.savefig("subcp"+filename+str(idxFile))
                 final = bezVar.toBezier3(res[:])
-                plotControlPoints(final, "black")
+                #~ plotControlPoints(final, "black")
                 if save:
                         plt.savefig("cp"+filename+str(idxFile))
                 idxFile += 1
@@ -239,17 +228,15 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
                         plt.show()
                 
                 return final
-        #~ except ValueError:
-                #~ plt.close()
-                #~ return P
+        except ValueError:
+                plt.close()
+                return P, q
 ######################## solve a given problem ########################
 
 
 #solve and gen problem
 def gen(save = False):
-        #~ testConstant = genBezierInput(20)
-        #~ splits = genSplit(4)
-        pDef = genProblemDef(6,3)
+        pDef = genProblemDef(10,4)
         return computeTrajectory(pDef, save)
 
 res = None

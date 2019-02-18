@@ -27,7 +27,7 @@ problem<Point, Dim, Numeric> generate_problem(const problem_definition<Point, Di
     problem<Point, Dim, Numeric> prob;
     problem_data<Point, Dim, Numeric> pData = setup_control_points<Point, Dim, Numeric>(pDef);
     initInequalityMatrix<Point, Dim, Numeric>(pDef,pData,prob);
-    prob.cost = compute_acceleration_cost<Point, Dim, Numeric>(pData);
+    prob.cost = compute_jerk_cost<Point, Dim, Numeric>(pData);
     return prob;
 }
 } // namespace optimization

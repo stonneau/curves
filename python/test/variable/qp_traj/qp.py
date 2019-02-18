@@ -5,6 +5,7 @@ from numpy import array, dot, vstack, hstack, asmatrix, identity
 #subject to  G x <= h
 #subject to  C x  = d
 def quadprog_solve_qp(P, q, G=None, h=None, C=None, d=None):
+    #~ qp_G = .5 * (P + P.T)   # make sure P is symmetric
     qp_G = .5 * (P + P.T)   # make sure P is symmetric
     qp_a = -q
     if C is not None:

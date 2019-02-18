@@ -31,13 +31,31 @@ quadratic_variable<Numeric> compute_derivative_cost
     bezier_t acc = pData.bezier->compute_derivate(num_derivate);
     const t_point_t& wps = acc.waypoints();
     return bezier_product<Point, Dim, Numeric, cit_point_t>
-            (wps.begin(),wps.end(),wps.begin(),wps.end());
+            (pData,wps.begin(),wps.end(),wps.begin(),wps.end());
+}
+
+template<typename Point, int Dim, typename Numeric>
+quadratic_variable<Numeric> compute_distance_cost(const problem_data<Point, Dim, Numeric>& pData)
+{
+    return compute_derivative_cost(pData,0);
 }
 
 template<typename Point, int Dim, typename Numeric>
 quadratic_variable<Numeric> compute_acceleration_cost(const problem_data<Point, Dim, Numeric>& pData)
 {
     return compute_derivative_cost(pData,2);
+}
+
+template<typename Point, int Dim, typename Numeric>
+quadratic_variable<Numeric> compute_velocity_cost(const problem_data<Point, Dim, Numeric>& pData)
+{
+    return compute_derivative_cost(pData,1);
+}
+
+template<typename Point, int Dim, typename Numeric>
+quadratic_variable<Numeric> compute_jerk_cost(const problem_data<Point, Dim, Numeric>& pData)
+{
+    return compute_derivative_cost(pData,3);
 }
 } // namespace optimization
 } // namespace spline
