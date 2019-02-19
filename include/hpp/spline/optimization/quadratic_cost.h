@@ -36,7 +36,7 @@ quadratic_variable<Numeric> compute_derivative_cost_internal
 
 template<typename Point, int Dim, typename Numeric>
 quadratic_variable<Numeric> compute_derivative_cost
-                    (const problem_data<Point, Dim, Numeric>& pData, const cost_flag flag)
+                    (const problem_data<Point, Dim, Numeric>& pData, const derivative_flag flag)
 {
     std::size_t size = (std::size_t)(flag) ;
     return compute_derivative_cost_internal<Point,Dim,Numeric>(pData, size);

@@ -33,26 +33,14 @@ enum constraint_flag{
     NONE      = 0x100
 };
 
-enum cost_flag{
+enum derivative_flag{
     DISTANCE     = 0x000,
     VELOCITY     = 0x001,
     ACCELERATION = 0x002,
     JERK         = 0x003,
     FOURTH       = 0x004,
-    FIFTH        = 0x005,
+    FIFTH        = 0x005
 };
-
-
-/*template<typename Numeric>
-struct cost_function
-{
-    typedef Eigen::Matrix< Numeric , Eigen::Dynamic , 1> vectorx_t;
-    typedef Eigen::Matrix< Numeric , Eigen::Dynamic , Eigen::Dynamic> matrix_x_t;
-
-    matrix_x_t quadratic;
-    vectorx_t linear;
-    Numeric constant;
-};*/
 
 
 template<typename Point, int Dim, typename Numeric>
@@ -90,7 +78,7 @@ struct problem_definition
 
 
     constraint_flag flag;
-    cost_flag costFlag;
+    derivative_flag costFlag;
     point_t start;
     point_t end;
     curve_constraints_t curveConstraints;

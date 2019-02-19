@@ -124,8 +124,8 @@ def genProblemDef(numvars = 3, numcurves= 4):
         valDep = array([[np.random.uniform(0., 1.), np.random.uniform(0.,5.), 0. ]]).T
         valEnd = array([[np.random.uniform(5., 10.), np.random.uniform(0.,5.), 0.]]).T
         pDef = problemDefinition()
-        pDef.flag =  int(constraint_flag.END_POS) | int(constraint_flag.INIT_POS) | int(constraint_flag.END_VEL)
-        #~ pDef.flag =  int(constraint_flag.END_POS) |  int(constraint_flag.END_VEL)
+        #~ pDef.flag =  int(constraint_flag.END_POS) | int(constraint_flag.INIT_POS) | int(constraint_flag.END_VEL)
+        pDef.flag =  int(constraint_flag.END_POS) |  int(constraint_flag.END_VEL)
         #~ pDef.flag =  constraint_flag.INIT_POS
         #~ pDef.flag =  constraint_flag.END_POS
         pDef.start = valDep
@@ -226,21 +226,13 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
 #solve and gen problem
 def gen(save = False):
         pDef = genProblemDef(5,3)
-        pDef.costFlag = cost_flag.DISTANCE
+        pDef.costFlag = derivative_flag.DISTANCE
         computeTrajectory(pDef, save)
-        
-        #~ plt.show()
-        #~ cc = pDef.curveConstraints
-        #~ v = cc.end_vel; v[0] = -0.000001; cc.end_vel = v
-        #~ print "endv",  cc.end_vel
-        #~ pDef.curveConstraints = cc;
-        #~ pDef.costFlag = cost_flag.DISTANCE
-        #~ computeTrajectory(pDef, save)
-        pDef.costFlag = cost_flag.VELOCITY
+        pDef.costFlag = derivative_flag.VELOCITY
         computeTrajectory(pDef, save)
-        pDef.costFlag = cost_flag.ACCELERATION
+        pDef.costFlag = derivative_flag.ACCELERATION
         computeTrajectory(pDef, save)
-        pDef.costFlag = cost_flag.JERK
+        pDef.costFlag = derivative_flag.JERK
         res = computeTrajectory(pDef, save)
         plt.legend(loc='upper left')
         plt.show()

@@ -325,8 +325,8 @@ quadratic_variable<Numeric> bezier_product(
         const problem_data<Point, Dim, Numeric>& pData, In PointsBegin1, In PointsEnd1, In PointsBegin2, In PointsEnd2)
 {
     typedef Eigen::Matrix<Numeric, Eigen::Dynamic, 1> vector_x_t;
-    unsigned int nPoints1 = (std::distance(PointsBegin1,PointsEnd1)),
-                 nPoints2 = (std::distance(PointsBegin2,PointsEnd2));
+    unsigned int nPoints1 = (unsigned int)(std::distance(PointsBegin1,PointsEnd1)),
+                 nPoints2 = (unsigned int)(std::distance(PointsBegin2,PointsEnd2));
     assert(nPoints1 > 0); assert(nPoints2 > 0);
     unsigned int deg1 = nPoints1-1, deg2 = nPoints2 -1;
     unsigned int newDeg = (deg1 + deg2);

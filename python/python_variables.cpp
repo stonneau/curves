@@ -65,9 +65,9 @@ void set_pd_flag(problem_definition_t* pDef, const int flag)
 {
     pDef->flag = (constraint_flag)(flag);
 }
-void set_cost_flag(problem_definition_t* pDef, const int flag)
+void set_derivative_flag(problem_definition_t* pDef, const int flag)
 {
-    pDef->costFlag = (cost_flag)(flag);
+    pDef->costFlag = (derivative_flag)(flag);
 }
 void set_start(problem_definition_t* pDef, const point_t &val )
 {
@@ -98,7 +98,7 @@ constraint_flag get_pd_flag(const problem_definition_t* pDef)
 {
     return pDef->flag;
 }
-cost_flag get_cost_flag(const problem_definition_t* pDef)
+derivative_flag get_derivative_flag(const problem_definition_t* pDef)
 {
     return pDef->costFlag;
 }

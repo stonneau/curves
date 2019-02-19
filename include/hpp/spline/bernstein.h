@@ -40,7 +40,7 @@ inline unsigned int bin(const unsigned  int n, const unsigned  int k)
 ///
 template <typename Numeric = double>
 struct Bern{
-Bern(const long unsigned int m, const long unsigned int i)
+Bern(const unsigned int m, const unsigned int i)
     :m_minus_i(m - i)
     ,i_(i)
     ,bin_m_i_(bin(m,i)) {}
@@ -63,10 +63,10 @@ Numeric bin_m_i_;
 /// \brief Computes all Bernstein polynomes for a certain degree
 ///
 template <typename Numeric>
-std::vector<Bern<Numeric> > makeBernstein(const long unsigned int n)
+std::vector<Bern<Numeric> > makeBernstein(const unsigned int n)
 {
     std::vector<Bern<Numeric> > res;
-    for(long unsigned int i = 0; i<= n; ++i)
+    for(unsigned int i = 0; i<= n; ++i)
         res.push_back(Bern<Numeric>(n, i));
     return res;
 }
