@@ -123,7 +123,7 @@ def genProblemDef(numvars = 3, numcurves= 4):
         valDep = array([[np.random.uniform(0., 1.), np.random.uniform(0.,5.), 0. ]]).T
         valEnd = array([[np.random.uniform(5., 10.), np.random.uniform(0.,5.), 0.]]).T
         pDef = problemDefinition()
-        #~ pDef.flag =  int(constraint_flag.END_POS) | int(constraint_flag.INIT_POS)
+        pDef.flag =  int(constraint_flag.END_POS) | int(constraint_flag.INIT_POS)
         #~ pDef.flag =  constraint_flag.INIT_POS
         #~ pDef.flag =  constraint_flag.END_POS
         pDef.start = valDep
@@ -163,7 +163,7 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
         #qp vars
         dimVar = ineq.cost.A.shape[0]
         P = ineq.cost.A * 2.
-        q = -ineq.cost.b.flatten()
+        q = ineq.cost.b.flatten()
         print "q", q
         G = zeros([2,dimVar])
         h = zeros(2)
