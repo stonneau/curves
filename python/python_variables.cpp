@@ -65,6 +65,10 @@ void set_pd_flag(problem_definition_t* pDef, const int flag)
 {
     pDef->flag = (constraint_flag)(flag);
 }
+void set_cost_flag(problem_definition_t* pDef, const int flag)
+{
+    pDef->costFlag = (cost_flag)(flag);
+}
 void set_start(problem_definition_t* pDef, const point_t &val )
 {
     pDef->start = val;
@@ -93,6 +97,10 @@ Eigen::VectorXd get_split_times(const problem_definition_t* pDef)
 constraint_flag get_pd_flag(const problem_definition_t* pDef)
 {
     return pDef->flag;
+}
+cost_flag get_cost_flag(const problem_definition_t* pDef)
+{
+    return pDef->costFlag;
 }
 Eigen::Vector3d get_start(const problem_definition_t* pDef)
 {

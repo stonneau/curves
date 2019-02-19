@@ -57,7 +57,7 @@ def genConstraintsPerPhase(pDef, numphases):
         pData = setupControlPoints(pDef)
         vB = varBezier()
         bezVar = vB.fromBezier(pData.bezier())
-        line_current = [array([1.,1.,0.]), array([0.,1.,0.])]
+        line_current = [array([1.,1.,0.]), array([0.,1.,0.]),array([0.,1.,0.])]
         dimExtra = 0
         for i in range(numphases):
                 init_points = []
@@ -124,12 +124,13 @@ def genProblemDef(numvars = 3, numcurves= 4):
         valDep = array([[np.random.uniform(0., 1.), np.random.uniform(0.,5.), 0. ]]).T
         valEnd = array([[np.random.uniform(5., 10.), np.random.uniform(0.,5.), 0.]]).T
         pDef = problemDefinition()
-        pDef.flag =  int(constraint_flag.END_POS) | int(constraint_flag.INIT_POS) | int(constraint_flag.INIT_VEL)
+        pDef.flag =  int(constraint_flag.END_POS) | int(constraint_flag.INIT_POS) | int(constraint_flag.END_VEL)
+        #~ pDef.flag =  int(constraint_flag.END_POS) |  int(constraint_flag.END_VEL)
         #~ pDef.flag =  constraint_flag.INIT_POS
         #~ pDef.flag =  constraint_flag.END_POS
         pDef.start = valDep
         pDef.end = valEnd
-        pDef.degree = numvars + 1
+        pDef.degree = numvars - 1
         pDef.splits = array([genSplit(numcurves)]).T        
         genConstraintsPerPhase(pDef, numcurves) #load random inequality constraints
         saveProblem(pDef)
@@ -148,6 +149,8 @@ def __addZeroConstants(res, pDef):
                         r = [0.,0.,0.] + r
         if (int)(constraint_flag.END_POS) & (int)(pDef.flag):
                 r = r + [0.,0.,0.]
+                if (int)(constraint_flag.END_VEL) & (int)(pDef.flag):
+                        r = r + [0.,0.,0.]
         return array(r)
         
 import time
@@ -213,7 +216,7 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
                 #~ else:
                         #~ plt.show()
                 
-                #~ return final
+                return final
         #~ except ValueError:
                 #~ plt.close()
                 return P, q
@@ -222,9 +225,17 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
 
 #solve and gen problem
 def gen(save = False):
-        pDef = genProblemDef(15,2)
+        pDef = genProblemDef(5,3)
         pDef.costFlag = cost_flag.DISTANCE
         computeTrajectory(pDef, save)
+        
+        #~ plt.show()
+        #~ cc = pDef.curveConstraints
+        #~ v = cc.end_vel; v[0] = -0.000001; cc.end_vel = v
+        #~ print "endv",  cc.end_vel
+        #~ pDef.curveConstraints = cc;
+        #~ pDef.costFlag = cost_flag.DISTANCE
+        #~ computeTrajectory(pDef, save)
         pDef.costFlag = cost_flag.VELOCITY
         computeTrajectory(pDef, save)
         pDef.costFlag = cost_flag.ACCELERATION

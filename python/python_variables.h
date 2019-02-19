@@ -74,6 +74,7 @@ struct LinearBezierVector
 LinearBezierVector* split_py(const bezier_linear_variable_t& self,  const vectorX_t& times);
 
 void set_pd_flag(problem_definition_t* pDef, const int flag);
+void set_cost_flag(problem_definition_t* pDef, const int flag);
 void set_start(problem_definition_t* pDef, const point_t& val );
 void set_end(problem_definition_t* pDef, const point_t& val );
 void set_degree(problem_definition_t* pDef, const std::size_t val );
@@ -81,6 +82,7 @@ void set_total_time(problem_definition_t* pDef, const double val );
 void set_split_time(problem_definition_t* pDef, const Eigen::VectorXd& val );
 Eigen::VectorXd get_split_times(const problem_definition_t* pDef);
 constraint_flag get_pd_flag(const problem_definition_t* pDef);
+cost_flag get_cost_flag(const problem_definition_t* pDef);
 Eigen::Vector3d get_start(const problem_definition_t* pDef);
 Eigen::Vector3d get_end(const problem_definition_t* pDef);
 std::size_t get_degree(const problem_definition_t* pDef);

@@ -33,6 +33,15 @@ enum constraint_flag{
     NONE      = 0x100
 };
 
+enum cost_flag{
+    DISTANCE     = 0x000,
+    VELOCITY     = 0x001,
+    ACCELERATION = 0x002,
+    JERK         = 0x003,
+    FOURTH       = 0x004,
+    FIFTH        = 0x005,
+};
+
 
 /*template<typename Numeric>
 struct cost_function
@@ -71,6 +80,7 @@ struct problem_definition
 
     problem_definition()
         : flag(NONE)
+        , costFlag(ACCELERATION)
         , start(point_t())
         , end(point_t())
         , curveConstraints()
@@ -80,6 +90,7 @@ struct problem_definition
 
 
     constraint_flag flag;
+    cost_flag costFlag;
     point_t start;
     point_t end;
     curve_constraints_t curveConstraints;

@@ -118,6 +118,7 @@ BOOST_PYTHON_MODULE(hpp_spline)
     class_<problem_definition_t>
         ("problemDefinition", init<>())
             .add_property("flag", &get_pd_flag, &set_pd_flag)
+            .add_property("costFlag", &get_cost_flag, &set_cost_flag)
             .add_property("start", &get_start, &set_start)
             .add_property("end", &get_end, &set_end)
             .add_property("degree", &get_degree, &set_degree)
@@ -167,6 +168,15 @@ BOOST_PYTHON_MODULE(hpp_spline)
             .value("END_ACC", END_ACC)
             .value("ALL", ALL)
             .value("NONE", NONE)
+            .export_values();
+
+    enum_<cost_flag>("cost_flag")
+            .value("DISTANCE", DISTANCE)
+            .value("VELOCITY", VELOCITY)
+            .value("ACCELERATION", ACCELERATION)
+            .value("JERK", JERK)
+            .value("FOURTH", FOURTH)
+            .value("FIFTH", FIFTH)
             .export_values();
     /** END variable points bezier curve**/
 

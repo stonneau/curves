@@ -117,13 +117,14 @@ problem_data<Point, Dim, Numeric> setup_control_points(const problem_definition<
         ++i;
         if(flag & INIT_VEL)
         {
-            point_t vel = pDef.start + constraints.init_vel / (num_t)degree;
+            point_t vel = pDef.start + (constraints.init_vel / (num_t)degree) / pDef.totalTime;
             variables_.push_back(var_t(vel));
             ++numConstants;
             ++i;
             if(flag & INIT_ACC)
             {
-                point_t acc = constraints.init_acc / (num_t)(degree * (degree-1))
+                point_t acc = (constraints.init_acc / (num_t)(degree * (degree-1)))
+                        / (pDef.totalTime *  pDef.totalTime)
                         + 2* vel- pDef.start;;
                 variables_.push_back(var_t(acc));
                 ++numConstants;
@@ -140,10 +141,11 @@ problem_data<Point, Dim, Numeric> setup_control_points(const problem_definition<
     {
         if(flag & END_VEL)
         {
-            point_t vel = pDef.end - constraints.end_vel  / (num_t)degree;
+            point_t vel = pDef.end - (constraints.end_vel  / (num_t)degree) / pDef.totalTime;
             if(flag & END_ACC)
             {
-                point_t acc = constraints.end_acc  / (num_t)(degree * (degree-1))
+                point_t acc = (constraints.end_acc  / (num_t)(degree * (degree-1)))
+                        / (pDef.totalTime) * (pDef.totalTime)
                         + 2* vel - pDef.end;
                 variables_.push_back(var_t(acc));
                 ++numConstants; ++i;
