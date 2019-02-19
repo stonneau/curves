@@ -21,23 +21,19 @@
 namespace spline
 {
 ///
-/// \brief Computes factorial of a number
-///
-inline long unsigned int fact(const long unsigned int n)
-{
-    long unsigned int res = 1;
-    for (long unsigned int i=2 ; i <= n ; ++i)
-       res *= i;
-    return res;
-}
-
-///
 /// \brief Computes a binomal coefficient
 ///
-inline long unsigned int bin(const long unsigned  int n, const long unsigned  int k)
+inline unsigned int bin(const unsigned  int n, const unsigned  int k)
 {
-    return fact(n) / (fact(k) * fact(n - k));
+    if(k >  n)
+        throw std::runtime_error("binomial coefficient higher than degree");
+    if(k == 0)
+        return 1;
+    if(k > n/2)
+        return bin(n,n-k);
+    return n * bin(n-1,k-1) / k;
 }
+
 
 /// \class Bernstein
 /// \brief Computes a Bernstein polynome

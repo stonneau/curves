@@ -148,6 +148,7 @@ def __addZeroConstants(res, pDef):
         return array(r)
         
 import time
+import math
         
 def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
         global idxFile
@@ -161,7 +162,7 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
         
         #qp vars
         dimVar = ineq.cost.A.shape[0]
-        P = ineq.cost.A      
+        P = ineq.cost.A * 2.
         q = -ineq.cost.b.flatten()
         print "q", q
         G = zeros([2,dimVar])
@@ -176,8 +177,8 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
         dimExtra = 0
         
         C = None; d = None
-        try:
-        #~ if True:                        
+        #~ try:
+        if True:                        
                 res = quadprog_solve_qp(P, q, G=G, h=h, C=C, d=d)
                 res = __addZeroConstants(res, pDef)
                 #plot bezier
@@ -236,16 +237,16 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
                 else:
                         plt.show()
                 
-                return final
-        except ValueError:
-                plt.close()
+                #~ return final
+        #~ except ValueError:
+                #~ plt.close()
                 return P, q
 ######################## solve a given problem ########################
 
 
 #solve and gen problem
 def gen(save = False):
-        pDef = genProblemDef(8,4)
+        pDef = genProblemDef(15,4)
         return computeTrajectory(pDef, save)
 
 res = None

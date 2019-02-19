@@ -1317,7 +1317,7 @@ int main(int /*argc*/, char** /*argv[]*/)
 {
     std::cout << "performing tests... \n";
     bool error = false;
-    /*CubicFunctionTest(error);
+    CubicFunctionTest(error);
     ExactCubicNoErrorTest(error);
     ExactCubicPointsCrossedTest(error); // checks that given wayPoints are crossed
     ExactCubicTwoPointsTest(error);
@@ -1335,7 +1335,7 @@ int main(int /*argc*/, char** /*argv[]*/)
     BezierDerivativeCurveTimeReparametrizationTest(error);
     BezierToPolynomConversionTest(error);
     BezierEvalDeCasteljau(error);
-    BezierSplitCurve(error);*/
+    BezierSplitCurve(error);
     BezierLinearProblemsetup_control_pointsNoConstraint(error);
     BezierLinearProblemsetup_control_pointsVarCombinatorialInit(error);
     BezierLinearProblemsetup_control_pointsVarCombinatorialEnd(error);
