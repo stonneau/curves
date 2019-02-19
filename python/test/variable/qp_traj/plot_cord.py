@@ -2,12 +2,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plotBezier(bez, color, linewidth = 2.0):
+def plotBezier(bez, color, label = None, linewidth = 2.0):
         step = 1000.
         points1 =  np.array([(bez(i/step*bez.max())[0][0],bez(i/step*bez.max())[1][0]) for i in range(int(step))])
         x = points1[:,0]
         y = points1[:,1]
-        plt.plot(x,y,color,linewidth=linewidth)
+        plt.plot(x,y,color,linewidth=linewidth, label=label)
         
 def plotControlPoints(bez, color):
         wps = bez.waypoints()

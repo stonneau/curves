@@ -115,6 +115,7 @@ def saveProblem(pDef):
 
 
 colors=['b', 'g', 'r', 'c', 'm', 'y', 'k']
+labels=['Distance', 'Velocity', 'Acceleration', 'Jerk']
 colors2=[colors[len(colors)-1-i] for i in range(len(colors))]
 
 
@@ -123,7 +124,7 @@ def genProblemDef(numvars = 3, numcurves= 4):
         valDep = array([[np.random.uniform(0., 1.), np.random.uniform(0.,5.), 0. ]]).T
         valEnd = array([[np.random.uniform(5., 10.), np.random.uniform(0.,5.), 0.]]).T
         pDef = problemDefinition()
-        pDef.flag =  int(constraint_flag.END_POS) | int(constraint_flag.INIT_POS)
+        pDef.flag =  int(constraint_flag.END_POS) | int(constraint_flag.INIT_POS) | int(constraint_flag.INIT_VEL)
         #~ pDef.flag =  constraint_flag.INIT_POS
         #~ pDef.flag =  constraint_flag.END_POS
         pDef.start = valDep
@@ -142,7 +143,9 @@ def __getbezVar(pDef): #for plotting only
 def __addZeroConstants(res, pDef):
         r = res.tolist()
         if (int)(constraint_flag.INIT_POS) & (int)(pDef.flag):
-                r = [0.,0.,0.] + r
+                r = [0.,0.,0.] + r                
+                if (int)(constraint_flag.INIT_VEL) & (int)(pDef.flag):
+                        r = [0.,0.,0.] + r
         if (int)(constraint_flag.END_POS) & (int)(pDef.flag):
                 r = r + [0.,0.,0.]
         return array(r)
@@ -164,7 +167,6 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
         dimVar = ineq.cost.A.shape[0]
         P = ineq.cost.A * 2.
         q = ineq.cost.b.flatten()
-        print "q", q
         G = zeros([2,dimVar])
         h = zeros(2)
         G[0,-1] =  1 ; h[0]=1.
@@ -182,48 +184,22 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
                 res = quadprog_solve_qp(P, q, G=G, h=h, C=C, d=d)
                 res = __addZeroConstants(res, pDef)
                 #plot bezier
+                derivative = (int)(pDef.costFlag)
+                color = colors[derivative]
                 for i, bez in enumerate(subs):
-                        color = colors[i]
+                        #~ color = colors[i]
                         test = bez.toBezier3(res[:])
-                        plotBezier(test, color, 4.)
+                        if( i == 0):
+                                plotBezier(test, color, label = labels[derivative], linewidth =7 - derivative*2)
+                        else:
+                                plotBezier(test, color, linewidth =7 - derivative*2)
                 if save:
                         plt.savefig(filename+str(idxFile))
                 #plot subs control points
                 for i, bez in enumerate(subs):
-                        color = colors[i]
+                        #~ color = colors[i]
                         test = bez.toBezier3(res[:])
-                        plotBezier(test, color)
-                        #~ plotControlPoints(test, color)
-                if save:
-                        plt.savefig("subcp"+filename+str(idxFile))
-                final = bezVar.toBezier3(res[:])
-                #~ plotControlPoints(final, "black")
-                if save:
-                        plt.savefig("cp"+filename+str(idxFile))
-                idxFile += 1
-                #~ if save:
-                        #~ plt.close()
-                #~ else:
-                        #~ plt.show()
-                
-                #~ return final
-                
-                #~ q2 = zeros(q.shape[0]); q2[3]=1
-                q2 = zeros(q.shape[0]); 
-                res = quadprog_solve_qp(identity(P.shape[0]) *0.001,q2 , G=G, h=h, C=C, d=d)
-                res = __addZeroConstants(res, pDef)
-                #plot bezier
-                for i, bez in enumerate(subs):
-                        color = colors2[i]
-                        test = bez.toBezier3(res[:])
-                        plotBezier(test, color)
-                if save:
-                        plt.savefig(filename+str(idxFile))
-                #plot subs control points
-                for i, bez in enumerate(subs):
-                        color = colors2[i]
-                        test = bez.toBezier3(res[:])
-                        plotBezier(test, color)
+                        #~ plotBezier(test, color)
                         #~ plotControlPoints(test, color)
                 if save:
                         plt.savefig("subcp"+filename+str(idxFile))
@@ -234,8 +210,8 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
                 idxFile += 1
                 if save:
                         plt.close()
-                else:
-                        plt.show()
+                #~ else:
+                        #~ plt.show()
                 
                 #~ return final
         #~ except ValueError:
@@ -246,8 +222,18 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
 
 #solve and gen problem
 def gen(save = False):
-        pDef = genProblemDef(15,4)
-        return computeTrajectory(pDef, save)
+        pDef = genProblemDef(15,2)
+        pDef.costFlag = cost_flag.DISTANCE
+        computeTrajectory(pDef, save)
+        pDef.costFlag = cost_flag.VELOCITY
+        computeTrajectory(pDef, save)
+        pDef.costFlag = cost_flag.ACCELERATION
+        computeTrajectory(pDef, save)
+        pDef.costFlag = cost_flag.JERK
+        res = computeTrajectory(pDef, save)
+        plt.legend(loc='upper left')
+        plt.show()
+        return res
 
 res = None
 for i in range(1):
