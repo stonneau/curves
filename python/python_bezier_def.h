@@ -106,17 +106,25 @@ point_t get_init_vel(const curve_constraints_t& c);
 
 point_t get_init_acc(const curve_constraints_t& c);
 
+point_t get_init_jerk(const curve_constraints_t& c);
+
 point_t get_end_vel(const curve_constraints_t& c);
 
 point_t get_end_acc(const curve_constraints_t& c);
+
+point_t get_end_jerk(const curve_constraints_t& c);
 
 void set_init_vel(curve_constraints_t& c, const point_t& val);
 
 void set_init_acc(curve_constraints_t& c, const point_t& val);
 
+void set_init_jerk(curve_constraints_t& c, const point_t& val);
+
 void set_end_vel(curve_constraints_t& c, const point_t& val);
 
 void set_end_acc(curve_constraints_t& c, const point_t& val);
+
+void set_end_jerk(curve_constraints_t& c, const point_t& val);
 
 } //namespace spline.
 

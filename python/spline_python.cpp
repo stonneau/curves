@@ -163,9 +163,11 @@ BOOST_PYTHON_MODULE(hpp_spline)
             .value("INIT_POS", INIT_POS)
             .value("INIT_VEL", INIT_VEL)
             .value("INIT_ACC", INIT_ACC)
+            .value("INIT_JERK", INIT_JERK)
             .value("END_POS", END_POS)
             .value("END_VEL", END_VEL)
             .value("END_ACC", END_ACC)
+            .value("END_JERK", END_JERK)
             .value("ALL", ALL)
             .value("NONE", NONE)
             .export_values();
@@ -208,8 +210,10 @@ BOOST_PYTHON_MODULE(hpp_spline)
         ("curve_constraints", init<>())
             .add_property("init_vel", &get_init_vel, &set_init_vel)
             .add_property("init_acc", &get_init_acc, &set_init_acc)
+            .add_property("init_jerk", &get_init_jerk, &set_init_jerk)
             .add_property("end_vel", &get_end_vel, &set_end_vel)
             .add_property("end_acc", &get_end_acc, &set_end_acc)
+            .add_property("end_jerk", &get_end_jerk, &set_end_jerk)
         ;
     /** END curve constraints**/
 

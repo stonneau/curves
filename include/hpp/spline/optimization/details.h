@@ -129,12 +129,19 @@ problem_data<Point, Dim, Numeric> setup_control_points(const problem_definition<
                 variables_.push_back(var_t(acc));
                 ++numConstants;
                 ++i;
+                if(flag & INIT_JERK){
+                  point_t jerk = constraints.init_jerk*pDef.totalTime*pDef.totalTime*pDef.totalTime/(degree*(degree-1)*(degree-2))
+                  + 3*acc -3*vel +pDef.start;
+                  variables_.push_back(var_t(jerk));
+                  ++numConstants;
+                  ++i;
+                }
             }
         }
     }
     const std::size_t first_variable_idx = i;
     // variables
-    for(; i + 3< numControlPoints; ++i)
+    for(; i + 4< numControlPoints; ++i)
         variables_.push_back(var_t());
     //end constraints
     if(flag & END_POS)
@@ -147,6 +154,16 @@ problem_data<Point, Dim, Numeric> setup_control_points(const problem_definition<
                 point_t acc = (constraints.end_acc  / (num_t)(degree * (degree-1)))
                         / (pDef.totalTime) * (pDef.totalTime)
                         + 2* vel - pDef.end;
+                if(flag & END_JERK){
+                  point_t jerk = -constraints.end_jerk*pDef.totalTime*pDef.totalTime*pDef.totalTime/(degree*(degree-1)*(degree-2))
+                  + 3*acc -3*vel + pDef.end;
+                  variables_.push_back(var_t(jerk));
+                  ++numConstants;
+                  ++i;
+                }else if(i<numControlPoints -3){
+                  variables_.push_back(var_t());
+                  ++i;
+                }
                 variables_.push_back(var_t(acc));
                 ++numConstants; ++i;
             }

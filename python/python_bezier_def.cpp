@@ -84,6 +84,11 @@ point_t get_init_acc(const curve_constraints_t& c)
     return c.init_acc;
 }
 
+point_t get_init_jerk(const curve_constraints_t& c)
+{
+    return c.init_jerk;
+}
+
 point_t get_end_vel(const curve_constraints_t& c)
 {
     return c.end_vel;
@@ -92,6 +97,11 @@ point_t get_end_vel(const curve_constraints_t& c)
 point_t get_end_acc(const curve_constraints_t& c)
 {
     return c.end_acc;
+}
+
+point_t get_end_jerk(const curve_constraints_t& c)
+{
+    return c.end_jerk;
 }
 
 void set_init_vel(curve_constraints_t& c, const point_t& val)
@@ -104,6 +114,11 @@ void set_init_acc(curve_constraints_t& c, const point_t& val)
     c.init_acc = val;
 }
 
+void set_init_jerk(curve_constraints_t& c, const point_t& val)
+{
+    c.init_jerk = val;
+}
+
 void set_end_vel(curve_constraints_t& c, const point_t& val)
 {
     c.end_vel = val;
@@ -112,6 +127,11 @@ void set_end_vel(curve_constraints_t& c, const point_t& val)
 void set_end_acc(curve_constraints_t& c, const point_t& val)
 {
     c.end_acc = val;
+}
+
+void set_end_jerk(curve_constraints_t& c, const point_t& val)
+{
+    c.end_jerk = val;
 }
 
 }

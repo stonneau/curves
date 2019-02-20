@@ -26,10 +26,12 @@ enum constraint_flag{
     INIT_POS  = 0x001,
     INIT_VEL  = 0x002,
     INIT_ACC  = 0x004,
-    END_POS   = 0x008,
-    END_VEL   = 0x010,
-    END_ACC   = 0x020,
-    ALL       = 0x03f,
+    INIT_JERK = 0x008,
+    END_POS   = 0x010,
+    END_VEL   = 0x020,
+    END_ACC   = 0x040,
+    END_JERK  = 0x080,
+    ALL       = 0x0ff,
     NONE      = 0x100
 };
 
