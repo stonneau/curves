@@ -1193,12 +1193,12 @@ void BezierLinearProblemsetup_control_pointsVarCombinatorialMix(bool& error){
     checkPair(res.second, 2, 1, "VarCombinatorialMix", error);
 
     flag = ALL;
-    res = setup_control_points(6, flag,init_pos,init_pos,constraints);
+    res = setup_control_points(8, flag,init_pos,init_pos,constraints);
     vars = res.first;
-    vartype exptecdvar3 [] = {constant,constant,constant,variable,constant,constant,constant};
-    checkNumVar(vars, 7, "VarCombinatorialMix", error);
+    vartype exptecdvar3 [] = {constant,constant,constant,constant,variable,constant,constant,constant,constant};
+    checkNumVar(vars, 9, "VarCombinatorialMix", error);
     checksequence(vars,exptecdvar3,"VarCombinatorialMix", error);
-    checkPair(res.second, 3, 1, "VarCombinatorialMix", error);
+    checkPair(res.second, 4, 1, "VarCombinatorialMix", error);
 
     flag = END_VEL | END_ACC | INIT_VEL;
     res = setup_control_points(5, flag,init_pos,init_pos,constraints);
@@ -1262,12 +1262,12 @@ void BezierLinearProblemInitInequalities(bool& error){
     checkPair(res.second, 2, 1, "VarCombinatorialMix", error);
 
     flag = ALL;
-    res = setup_control_points(8, flag,init_pos,init_pos,constraints);
+    res = setup_control_points(6, flag,init_pos,init_pos,constraints);
     vars = res.first;
-    vartype exptecdvar3 [] = {constant,constant,constant,constant,variable,constant,constant,constant,constant};
-    checkNumVar(vars, 9, "VarCombinatorialMix", error);
+    vartype exptecdvar3 [] = {constant,constant,constant,variable,constant,constant,constant};
+    checkNumVar(vars, 7, "VarCombinatorialMix", error);
     checksequence(vars,exptecdvar3,"VarCombinatorialMix", error);
-    checkPair(res.second, 4, 1, "VarCombinatorialMix", error);
+    checkPair(res.second, 3, 1, "VarCombinatorialMix", error);
 
     flag = END_VEL | END_ACC | INIT_VEL;
     res = setup_control_points(5, flag,init_pos,init_pos,constraints);

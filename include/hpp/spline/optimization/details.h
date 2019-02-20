@@ -160,14 +160,14 @@ problem_data<Point, Dim, Numeric> setup_control_points(const problem_definition<
                   variables_.push_back(var_t(jerk));
                   ++numConstants;
                   ++i;
-                }else if(i<numControlPoints -3){
+                }else while(i<numControlPoints -3){
                   variables_.push_back(var_t());
                   ++i;
                 }
                 variables_.push_back(var_t(acc));
                 ++numConstants; ++i;
             }
-            else if(i<numControlPoints-2)
+            else while(i<numControlPoints-2)
             {
                 variables_.push_back(var_t());
                 ++i;
