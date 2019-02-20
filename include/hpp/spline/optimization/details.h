@@ -370,7 +370,7 @@ quadratic_variable<Numeric> bezier_product(
         }
     }
     // now removing useless variables
-    return clip_constants(pData, res)/newDeg;
+    return clip_constants(pData, res)/(newDeg+1);
 }
 
 inline constraint_flag operator~(constraint_flag a)

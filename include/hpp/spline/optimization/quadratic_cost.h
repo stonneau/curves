@@ -27,7 +27,6 @@ quadratic_variable<Numeric> compute_derivative_cost_internal
     typedef bezier_curve<Numeric, Numeric, Dim, true,linear_variable<Dim, Numeric> > bezier_t;
     typedef typename bezier_t::t_point_t t_point_t;
     typedef typename t_point_t::const_iterator cit_point_t;
-    // first, derivate twice to get acceleration
     bezier_t acc = pData.bezier->compute_derivate(num_derivate);
     const t_point_t& wps = acc.waypoints();
     return bezier_product<Point, Dim, Numeric, cit_point_t>
