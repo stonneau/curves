@@ -342,7 +342,7 @@ quadratic_variable<Numeric> bezier_product(
             ratio = (Numeric)(bin(deg1,j)*bin(deg2,i-j)) / (Numeric)(bin(newDeg,i));
             In itj = PointsBegin1 + j ;
             In iti = PointsBegin2 +(i-j) ;
-            res+= (*itj) * (*iti) * ratio;
+            res+= ((*itj) * (*iti)) * ratio;
         }
     }
     return res/(newDeg+1);

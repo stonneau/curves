@@ -28,27 +28,30 @@ struct linear_variable
     typedef Eigen::Matrix<Numeric, Dim, Eigen::Dynamic> matrix_dim_x_t;
     typedef Eigen::Matrix<Numeric, Dim, 1> point_dim_t;
     typedef Eigen::Matrix<Numeric, Eigen::Dynamic, 1> vectord_t;
+    typedef Eigen::Matrix<Numeric, Eigen::Dynamic, Eigen::Dynamic> matrix_x_t;
     typedef linear_variable<Dim, Numeric> linear_variable_t;
 
-    linear_variable(): B_(matrix_dim_t::Identity()), c_(point_dim_t::Zero()){} //variable
-    linear_variable(const point_dim_t& c):B_(matrix_dim_t::Zero()),c_(c) {} // constant
-    linear_variable(const matrix_dim_x_t& B, const point_dim_t& c):B_(B),c_(c) {} //mixed
+    linear_variable(): B_(matrix_dim_t::Identity()), c_(point_dim_t::Zero()), zero(false){} //variable
+    linear_variable(const point_dim_t& c):B_(matrix_dim_t::Zero()),c_(c), zero(false) {} // constant
+    linear_variable(const matrix_dim_x_t& B, const point_dim_t& c):B_(B),c_(c), zero(false) {} //mixed
 
     // linear evaluation
     point_dim_t operator()(const Eigen::Ref<const point_dim_t>& val) const
     {
+        assert(!isZero());
         return B() * val + c();
     }
 
     linear_variable_t& operator+=(const linear_variable_t& w1)
     {
         // handling zero case
-        if(c_.rows() == 0)
+        if(isZero())
         {
             this->B_ = w1.B_;
             this->c_ = w1.c_;
+            zero = w1.isZero();
         }
-        else if(w1.c().rows() !=0)
+        else
         {
             this->B_ += w1.B_;
             this->c_ += w1.c_;
@@ -58,12 +61,13 @@ struct linear_variable
     linear_variable_t& operator-=(const linear_variable_t& w1)
     {
         // handling zero case
-        if(c_.rows() == 0)
+        if(isZero())
         {
-            this->B_ -= w1.B_;
-            this->c_ -= w1.c_;
+            this->B_ = -w1.B_;
+            this->c_ = -w1.c_;
+            zero = w1.isZero();
         }
-        else if(w1.c().rows() !=0)
+        else
         {
             this->B_ -= w1.B_;
             this->c_ -= w1.c_;
@@ -73,7 +77,7 @@ struct linear_variable
     linear_variable_t& operator/=(const double d)
     {
         // handling zero case
-        if(c_.rows() != 0)
+        if(!isZero())
         {
             this->B_ /= d;
             this->c_ /= d;
@@ -83,7 +87,7 @@ struct linear_variable
     linear_variable_t& operator*=(const double d)
     {
         // handling zero case
-        if(c_.rows() != 0)
+        if(!isZero())
         {
             this->B_ *= d;
             this->c_ *= d;
@@ -92,15 +96,17 @@ struct linear_variable
     }
 
     static linear_variable_t Zero(size_t /*dim=0*/){
-        return linear_variable_t(matrix_dim_t::Zero(), vectord_t::Zero(0));
+        return linear_variable_t(matrix_x_t::Identity(Dim,Dim), point_dim_t::Zero());
     }
 
     const matrix_dim_x_t& B() const {return B_;}
     const point_dim_t& c () const {return c_;}
+    const bool isZero () const {return zero;}
 
 private:
     matrix_dim_x_t B_;
     point_dim_t c_;
+    bool zero;
 };
 
 template <typename Numeric=double>
@@ -113,19 +119,22 @@ struct quadratic_variable
     quadratic_variable()
     {
         c_ = 0.;
-        b_ = point_t::Zero(0);
-        A_ = matrix_x_t::Zero(0,0);
+        b_ = point_t::Zero(1);
+        A_ = matrix_x_t::Zero(1,1);
+        zero = true;
     }
 
     quadratic_variable(const matrix_x_t& A, const point_t& b, const Numeric c = 0):
         c_(c),
         b_(b),
-        A_(A){assert(A.cols() == b.rows() && A.cols() == A.rows());}
+        A_(A),
+        zero(false){assert(A.cols() == b.rows() && A.cols() == A.rows());}
 
     quadratic_variable(const point_t& b, const Numeric c = 0):
         c_(c),
         b_(b),
-        A_(matrix_x_t::Identity((int)(b.rows()),(int)(b.rows()))){}
+        A_(matrix_x_t::Zero((int)(b.rows()),(int)(b.rows()))),
+        zero(false){}
 
     static quadratic_variable_t Zero(size_t dim=0){
         return quadratic_variable_t();
@@ -134,18 +143,24 @@ struct quadratic_variable
     // linear evaluation
     Numeric operator()(const Eigen::Ref<const point_t>& val) const
     {
+        assert(!isZero());
         return val.transpose() * A() * val + b().transpose() * val + c();
     }
 
+
     quadratic_variable& operator+=(const quadratic_variable& w1)
     {
-        if(b_.rows() == 0)
+        if(isZero())
         {
-            this->A_ = w1.A_;
-            this->b_ = w1.b_;
-            this->c_ = w1.c_;
+            if(!w1.isZero())
+            {
+                this->A_ = w1.A_;
+                this->b_ = w1.b_;
+                this->c_ = w1.c_;
+                zero = false;
+            }
         }
-        else if(w1.b().rows() !=0)
+        else if(!w1.isZero())
         {
             this->A_ += w1.A_;
             this->b_ += w1.b_;
@@ -155,13 +170,17 @@ struct quadratic_variable
     }
     quadratic_variable& operator-=(const quadratic_variable& w1)
     {
-        if(b_.rows() == 0)
+        if(isZero())
         {
-            this->A_ = -w1.A_;
-            this->b_ = -w1.b_;
-            this->c_ = -w1.c_;
+            if(!w1.isZero())
+            {
+                this->A_ = -w1.A_;
+                this->b_ = -w1.b_;
+                this->c_ = -w1.c_;
+                zero = false;
+            }
         }
-        else if(w1.b().rows() !=0)
+        else if(!w1.isZero())
         {
             this->A_ -= w1.A_;
             this->b_ -= w1.b_;
@@ -173,7 +192,7 @@ struct quadratic_variable
     quadratic_variable& operator/=(const double d)
     {
         // handling zero case
-        if(b_.rows() != 0)
+        if(!isZero())
         {
             this->A_ /= d;
             this->b_ /= d;
@@ -184,7 +203,7 @@ struct quadratic_variable
     quadratic_variable& operator*=(const double d)
     {
         // handling zero case
-        if(b_.rows() != 0)
+        if(!isZero())
         {
             this->A_ *= d;
             this->b_ *= d;
@@ -196,11 +215,13 @@ struct quadratic_variable
     const matrix_x_t& A() const {return A_;}
     const point_t&  b () const {return b_;}
     const Numeric  c () const {return c_;}
+    const bool  isZero() const {return zero;}
 
 private:
     Numeric c_;
     point_t b_;
     matrix_x_t A_;
+    bool zero;
 };
 
 
@@ -226,11 +247,12 @@ inline quadratic_variable<N> operator*(const linear_variable<D,N>& w1, const lin
     typedef typename lin_var_t::point_dim_t point_dim_t;
     point_dim_t ones = point_dim_t::Ones();
     point_t b1   = w1.B().transpose()*ones, b2 = w2.B().transpose()*ones;
-    matrix_x_t A1 = to_diagonal<N>(b1);
-    matrix_x_t A2 = to_diagonal<N>(b2); //b1.array().square()
+    matrix_x_t B1 = to_diagonal<N>(b1);
+    matrix_x_t B2 = to_diagonal<N>(b2); //b1.array().square()
     // omitting all transposes since A matrices are diagonals
-    matrix_x_t  A = A1.transpose() * A2;
-    point_t  b = A1.transpose() * b2 + A2.transpose() * b1;
+    matrix_x_t  A = B1.transpose() * B2;
+    //point_t  b = B1.transpose() * b2 + B2.transpose() * b1;
+    point_t  b = w1.c().transpose() * w2.B() + w2.c().transpose() * w1.B();
     N c = w1.c().transpose() * w2.c();
     return quad_var_t(A,b,c);
 }

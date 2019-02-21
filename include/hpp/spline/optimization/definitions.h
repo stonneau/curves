@@ -70,7 +70,7 @@ struct problem_definition
 
     problem_definition()
         : flag(NONE)
-        , costFlag(ACCELERATION)
+        , costFlag(DISTANCE)
         , start(point_t())
         , end(point_t())
         , curveConstraints()
