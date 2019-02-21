@@ -65,24 +65,30 @@ inline std::size_t num_active_constraints(const constraint_flag& flag)
 }
 
 template <int Dim, typename Numeric, typename LinearVar>
-LinearVar fill_with_zeros(const LinearVar& var, const std::size_t totalvar, const std::size_t i)
+LinearVar fill_with_zeros(const LinearVar& var,const std::size_t i,
+                          const std::size_t startVariableIndex,
+                          const std::size_t numVariables)
 {
     typedef Eigen::Matrix<Numeric, Eigen::Dynamic, Eigen::Dynamic> matrix_t;
     typename LinearVar::matrix_dim_x_t B;
-    B = matrix_t::Zero(Dim,totalvar*Dim);
-    B.block(0,Dim*i,Dim,Dim) = var.B();
+    B = matrix_t::Zero(Dim,numVariables*Dim);
+    if( startVariableIndex  <= i  && i<= startVariableIndex +numVariables-1 )
+        B.block(0,Dim*(i-startVariableIndex),Dim,Dim) = var.B();
     return LinearVar (B,var.c());
 }
 
 
-template < int Dim, typename Numeric, typename Bezier, typename LinearVar>
-Bezier* compute_linear_control_points(const std::vector<LinearVar>& linearVars, const Numeric totalTime)
+template <typename Point, int Dim, typename Numeric, typename Bezier, typename LinearVar>
+Bezier* compute_linear_control_points(const problem_data<Point, Dim, Numeric>& pData,
+        const std::vector<LinearVar>& linearVars, const Numeric totalTime)
 {
     std::vector<LinearVar> res;
     // now need to fill all this with zeros...
     std::size_t totalvar = linearVars.size();
     for (std::size_t i = 0; i < totalvar; ++i)
-        res.push_back( fill_with_zeros<Dim, Numeric, LinearVar>(linearVars[i],totalvar,i));
+        res.push_back( fill_with_zeros<Dim, Numeric, LinearVar>(linearVars[i],i,
+                                                                pData.startVariableIndex,
+                                                                pData.numVariables));
     return new Bezier(res.begin(),res.end(), totalTime);
 }
 
@@ -194,13 +200,13 @@ problem_data<Point, Dim, Numeric> setup_control_points(const problem_definition<
     assert(numControlPoints == variables_.size());
 
 
-    problemData.bezier = compute_linear_control_points<Dim, Numeric,
-                                            bezier_curve<Numeric, Numeric, Dim, true,var_t>,
-                                            var_t>(variables_,  pDef.totalTime);
     problemData.numControlPoints = numControlPoints;
     problemData.numVariables = numControlPoints-numConstants;
     problemData.startVariableIndex =first_variable_idx;
     problemData.numStateConstraints = numActiveConstraints - problemData.numVariables;
+    problemData.bezier = compute_linear_control_points<Point, Dim, Numeric,
+                                            bezier_curve<Numeric, Numeric, Dim, true,var_t>,
+                                            var_t>(problemData, variables_,  pDef.totalTime);
     return problemData;
 }
 
@@ -225,22 +231,6 @@ long compute_num_ineq_state_constraints
 {
     //TODO
     return 0;
-}
-
-
-template< typename Point, int Dim, typename Numeric, typename Bezier, typename T_matrix_t, typename T_vector_t>
-void bezierWaypointsToMatrixForm(const std::size_t startVariableIndex, const std::size_t numVariables,
-                                 const Bezier& bezier, T_matrix_t& matrices, T_vector_t& vectors)
-{
-    typedef typename Bezier::t_point_t t_point;
-    typedef typename Bezier::t_point_t::const_iterator cit_point;
-    const t_point& wps = bezier.waypoints();
-    // each control has a linear expression depending on all variables
-    for(cit_point cit = wps.begin(); cit != wps.end(); ++cit)
-    {
-        matrices.push_back(cit->B().block(0,startVariableIndex*Dim, Dim, numVariables*Dim));
-        vectors.push_back(cit->c());
-    }
 }
 
 template<typename Point, int Dim, typename Numeric>
@@ -286,6 +276,8 @@ void initInequalityMatrix
     typedef bezier_curve<Numeric, Numeric, Dim, true, linear_variable<Dim, Numeric> >  bezier_t;
     typedef std::vector<bezier_t> T_bezier_t;
     typedef typename T_bezier_t::const_iterator CIT_bezier_t;
+    typedef typename bezier_t::t_point_t t_point;
+    typedef typename bezier_t::t_point_t::const_iterator cit_point;
 
     long cols =  pData.numVariables * Dim;
     long rows = compute_num_ineq_control_points<Point, Dim, Numeric>(pDef, pData);
@@ -307,34 +299,18 @@ void initInequalityMatrix
          bit != beziers.end(); ++bit, ++cvit, ++cmit)
     {
         //compute vector of linear expressions of each control point
-        T_matrix_dimx_t matrices; T_vector_dim_t vectors;
-        bezierWaypointsToMatrixForm<Point, Dim, Numeric, bezier_t, T_matrix_dimx_t, T_vector_dim_t>
-                (pData.startVariableIndex, pData.numVariables, *bit, matrices, vectors);
-        // copy constraints the number of times there are control points
-        CIT_vector_dim_t vdim_cit = vectors.begin();
-        for(CIT_matrix_dimx_t mdim_cit = matrices.begin();
-            mdim_cit != matrices.end(); ++mdim_cit, ++vdim_cit)
+
+        const t_point& wps = bit->waypoints();
+        // each control has a linear expression depending on all variables
+        for(cit_point cit = wps.begin(); cit != wps.end(); ++cit)
         {
             prob.ineqMatrix.block(currentRowIdx, 0,cmit->rows(),cols)
-                    = (*cmit)*(*mdim_cit) ; // constraint inequality for current bezier * expression of control point
-            prob.ineqVector.segment(currentRowIdx,cmit->rows()) = *cvit - (*cmit)*(*vdim_cit) ;
+                    = (*cmit)*(cit->B()) ; // constraint inequality for current bezier * expression of control point
+            prob.ineqVector.segment(currentRowIdx,cmit->rows()) = *cvit - (*cmit)*(cit->c()) ;
             currentRowIdx += cmit->rows();
         }
     }
     assert (rows == currentRowIdx); // we filled all the constraints
-}
-
-template<typename Point, int Dim, typename Numeric>
-quadratic_variable<Numeric> clip_constants(const problem_data<Point, Dim, Numeric>& pData,
-                                           const quadratic_variable<Numeric>& quad)
-{
-    typedef typename quadratic_variable<Numeric>::matrix_x_t matrix_x_t;
-    typedef typename quadratic_variable<Numeric>::point_t point_t;
-    int start  = (int)(pData.startVariableIndex*Dim);
-    int length = (int)(pData.numVariables*Dim);
-    matrix_x_t A = quad.A().block(start,start, length,length);
-    point_t b    = quad.b().segment(start,length);
-    return quadratic_variable<Numeric>(A,b,quad.c());
 }
 
 template<typename Point, int Dim, typename Numeric, typename In >
@@ -369,8 +345,7 @@ quadratic_variable<Numeric> bezier_product(
             res+= (*itj) * (*iti) * ratio;
         }
     }
-    // now removing useless variables
-    return clip_constants(pData, res)/(newDeg+1);
+    return res/(newDeg+1);
 }
 
 inline constraint_flag operator~(constraint_flag a)
