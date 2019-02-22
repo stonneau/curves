@@ -4,7 +4,7 @@ from numpy import array, dot, vstack, hstack, asmatrix, identity
 #min (1/2)x' P x + q' x  
 #subject to  G x <= h
 #subject to  C x  = d
-def quadprog_solve_qp(P, q, G=None, h=None, C=None, d=None):
+def quadprog_solve_qp(P, q, G=None, h=None, C=None, d=None, verbose = False):
     #~ qp_G = .5 * (P + P.T)   # make sure P is symmetric
     qp_G = .5 * (P + P.T)   # make sure P is symmetric
     qp_a = -q
@@ -19,8 +19,12 @@ def quadprog_solve_qp(P, q, G=None, h=None, C=None, d=None):
     else:  # no equality constraint 
         qp_C = -G.T
         qp_b = -h
-        meq = 0
-    return quadprog.solve_qp(qp_G, qp_a, qp_C, qp_b, meq)[0]
+        meq = 0 
+    res = quadprog.solve_qp(qp_G, qp_a, qp_C, qp_b, meq)
+    if verbose:
+            return res
+    #~ print 'qp status ', res
+    return res[0]
 
 
 #min ||Ax-b||**2 

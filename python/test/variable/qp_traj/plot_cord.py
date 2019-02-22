@@ -25,3 +25,22 @@ def plotPoly(lines, color):
                 xl = pointsline[:,0]
                 yl = pointsline[:,1]
                 plt.plot(xl,yl,color,linewidth=0.5)
+
+def plotFun(bez, start, end, color, label = None, linewidth = 2.0):
+        step = 1000.
+        points1 =  np.array([[start + i/step*end,bez(start + i/step*end)] for i in range(int(step))])
+        x = points1[:,0]
+        y = points1[:,1]
+        plt.plot(x,y,color,linewidth=linewidth, label=label)
+
+
+if __name__ == '__main__':
+        def cost(x):
+                return x**2 + x * 2
+        def cost_f(x):
+                return 2./3. * x**2 - x * 2./3. * 2
+             
+             
+        plotFun(cost,-3.,6.,'r')
+        plotFun(cost_f,-3.,6.,'b')
+        
