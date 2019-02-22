@@ -4,7 +4,8 @@ from numpy.linalg import norm
 
 __EPS = 1e-6
 
-
+import numpy as np
+np.set_printoptions(precision=3, suppress=True, threshold=np.nan)
 from varBezier import varBezier
 from qp_cord import *
 from plot_cord import *
@@ -25,7 +26,13 @@ def genSplit(numCurves):
         for i in range(numCurves):
                 splits += [lastval]
                 lastval += np.random.uniform(0., 1.)
-        return [el / lastval for el in splits[:-1]]        
+        return [el / lastval for el in splits[:-1]]   
+             
+def addSplit(times):
+        res =[times[0]]
+        for el in times[1:]:
+                res += [res[-1] + el]    
+        return res
                 
 
 def getRightMostLine(ptList):
@@ -61,12 +68,45 @@ def genConstraintsPerPhase(pDef, numphases):
         dimExtra = 0
         ineqs = []
         for i in range(numphases):
-                #~ res_tmp = []
                 init_points = []
                 if i == 0:
-                        init_points = [bezVar.waypoints()[1][:3,0][:2]]
+                        #~ init_points = [bezVar.waypoints()[1][:3,0][:2]]
+                        init_points = [pDef.start.flatten()[:2]]; 
+                        init_points = init_points + [init_points[-1] + np.array([0.1,0.1])]
+                        init_points = init_points + [init_points[-1] + np.array([-0.1,0.1])]
+                        init_points = init_points + [init_points[-1] + np.array([-0.1,-0.1])]
+                        init_points = init_points + [init_points[-1] + np.array([0.1,0.1])]
                 if i == numphases-1:
                         init_points = [bezVar.waypoints()[1][-3:,-1][:2]]
+                lines, ptList = genFromLine(line_current, 5, [[0,5],[0,5]],init_points)
+                matineq0 = None; vecineq0 = None
+                for line in lines:
+                        (mat,vec) = getLineFromSegment(line)
+                        (matineq0, vecineq0) = (concat(matineq0,mat), concatvec(vecineq0,vec))
+                ineq  = (matineq0, vecineq0)
+                ineqs += [(matineq0[:], vecineq0[:])]
+                pDef.addInequality(matineq0,vecineq0.reshape((-1,1)))
+                line_current = getRightMostLine(ptList)
+                plotPoly  (lines, colors[i])
+        return ineqs
+   
+def genConstraintsPerPhaseNew(pDef, numphases):        
+        pData = setupControlPoints(pDef)
+        vB = varBezier()
+        bezVar = vB.fromBezier(pData.bezier())
+        line_current = [array([1.,1.,0.]), array([0.,1.,0.]),array([0.,1.,0.])]
+        dimExtra = 0
+        ineqs = []
+        for i in range(numphases):
+                #~ res_tmp = []
+                init_points = []
+                if i == 0 and int (pDef.flag) & int(constraint_flag.INIT_POS):
+                        #~ init_points = [bezVar.waypoints()[1][:3,0][:2]]
+                        init_points = [pDef.start.flatten()[:2]]
+                if i == numphases-1 :
+                        init_points = [pDef.end.flatten()[:2]]
+                        #~ init_points = [bezVar.waypoints()[1][-3:,-1][:2]]
+                #~ lines, ptList = genFromLine(line_current, 5, [[4*i-1,4*i+3],[0,5]],init_points)
                 lines, ptList = genFromLine(line_current, 5, [[0,5],[0,5]],init_points)
                 matineq0 = None; vecineq0 = None
                 for line in lines:
@@ -132,7 +172,9 @@ def genProblemDef(numvars = 3, numcurves= 4):
         #~ valEnd = array([[1.,1.,0.]]).T
         #~ valEnd = array([[2.,2.,2.]]).T
         pDef = problemDefinition()
-        pDef.flag =  int(constraint_flag.INIT_POS) | int(constraint_flag.INIT_VEL) | int(constraint_flag.INIT_ACC)
+        pDef.flag =  int(constraint_flag.INIT_POS) | int(constraint_flag.INIT_VEL)
+        #~ pDef.flag =  int(constraint_flag.INIT_POS) | int(constraint_flag.INIT_VEL) | int(constraint_flag.INIT_ACC)
+        #~ pDef.flag =  int(constraint_flag.INIT_POS) | int(constraint_flag.INIT_VEL) | int(constraint_flag.INIT_ACC)
         pDef.start = valDep
         pDef.end = valEnd
         pDef.degree = numvars - 1
@@ -169,6 +211,8 @@ def qpineq(cost, ineq, eq = None, verbose = False):
                 d [-eqDim] = eq[1]  
                 C=eq[0]
                 d=eq[1]
+                #~ G = None
+                #~ h = None
         
         #~ res = quadprog_solve_qp(P, q, G=G, h=h, C=C, d=d, verbose = verbose)
         return [quadprog_solve_qp(P, q, G=G, h=h, C=C, d=d, verbose = verbose), P, q, G, h]
@@ -179,14 +223,19 @@ def evalBez(res, pDef):
         bezVar = __getbezVar(pDef)
         return bezVar.toBezier3(res[:]);
 
+
+gb = -1
+
 def plot(pDef, res, filename, saveToFile):        
         global idxFile
         global colors
+        global gb
         bezVar = __getbezVar(pDef)
         subs = bezVar.split(pDef.splits.reshape((-1)).tolist())
         final = evalBez(res,pDef)
         derivative = (int)(pDef.costFlag)
-        color = colors[derivative]
+        color = colors[derivative + gb]
+        gb = gb + 1
         for i, bez in enumerate(subs):
                 #~ color = colors[i]
                 test = bez.toBezier3(res[:])
@@ -215,17 +264,21 @@ def plot(pDef, res, filename, saveToFile):
         
         return final
         
-
-def computeTrajectory(pDef, saveToFile, filename = uuid.uuid4().hex.upper()[0:6]):        
+def computeTrajectory(pDef, saveToFile, filename = uuid.uuid4().hex.upper()[0:6], inequalities_per_phase = None):        
         ineq = generate_problem(pDef);
         
         #~ print "INEQ " , ineq.A
         (res,P, q, G, H) = (None, None, None, None,None)
         try:                  
-                (res,P, q, G, H) = qpineq((ineq.cost.A, ineq.cost.b),(ineq.A, ineq.b))
+                phaseA = inequalities_per_phase[0]
+                (lineIneq,lineinec)= (phaseA[0][i,:], phaseA[1][i])
+                lastinphase1 = zeros((1,ineq.A.shape[1]))
+                lastinphase1[:,-3:] = lineIneq
+                eq = (lastinphase1, array([lineinec]))
+                (res,P, q, G, H) = qpineq((ineq.cost.A, ineq.cost.b),(ineq.A, ineq.b),eq)
                 plot(pDef, res, filename, saveToFile)
         except ValueError:
-                print "FAIl traj"
+                #~ print "FAIl traj"
                 raise ValueError
 ######################## solve a given problem ########################
 
@@ -233,11 +286,9 @@ def computeTrajectory(pDef, saveToFile, filename = uuid.uuid4().hex.upper()[0:6]
 def ineq2Phases(phase0, phase1):
         return (concat(phase0[0],phase1[0]), concatvec(phase0[1],phase1[1]))
         
-def def_find_min_t_out(phase0, phase1, bezierPrev, i  = None):
+def def_find_min_t_out(degree, phase0, phase1, bezierPrev, i  = None):
         pDef = problemDefinition()
-        #~ pDef.flag =  int(constraint_flag.INIT_POS) | int(constraint_flag.INIT_VEL) | int(constraint_flag.INIT_ACC)
         pDef.flag =  int(constraint_flag.INIT_POS) | int(constraint_flag.INIT_VEL)
-        #~ pDef.flag =  int(constraint_flag.INIT_POS) 
         pDef.costFlag = derivative_flag.VELOCITY
         pDef.splits = array([genSplit(1)]).T   
         c = curve_constraints()
@@ -245,18 +296,29 @@ def def_find_min_t_out(phase0, phase1, bezierPrev, i  = None):
         c.init_vel =  bezierPrev.derivate(bezierPrev.max(),1).copy()
         pDef.curveConstraints = c
         pDef.start = bezierPrev(bezierPrev.max()).copy()
-        print "start end point", pDef.start
-        pDef.degree = pDef.degree
+        #~ print "start end point", pDef.start
+        pDef.degree = degree
+        #~ print "degree", pDef.degree
         
         ph0 = (phase0[0][:],phase0[1][:])
         
         pDef.addInequality(ph0[0],ph0[1].reshape((-1,1)))
         ineq = generate_problem(pDef)
-        print "FLAG", pDef.flag
+        #~ print "FLAG", pDef.flag
         #add constraint on last waypoint
         lastinphase1 = zeros((phase1[1].shape[0],ineq.A.shape[1]))
         lastinphase1[:,-3:] = phase1[0]                
+        #add constraint on velocity waypoint #TODO
+        # x+1 = 2 x_end - x-1
+        # with P1 and p1 phase 1 matrix / vector
+        # P1 (2 x_end - x-1) <= p1
+        #~ vel =  npDef.start.flatten() + (npDef.curveConstraints.init_vel.flatten()) / float(npDef.degree)
+        veclcon = zeros((phase1[1].shape[0],ineq.A.shape[1]))    
+        veclcon[:,-6:-3] = -phase1[0]                
+        veclcon[:,-3:] = 2*phase1[0]            
+        print "velc on", veclcon
         (matineq0, vecineq0) = (concat(ineq.A,lastinphase1), concatvec(ineq.b.reshape((-1)),phase1[1]))
+        (matineq0, vecineq0) = (concat(matineq0,veclcon), concatvec(vecineq0,phase1[1]))
         return pDef, (ineq.cost.A,ineq.cost.b),(matineq0, vecineq0) 
         #~ return pDef, (ineq.cost.A,ineq.cost.b),(ineq.A,ineq.b) 
         
@@ -269,10 +331,10 @@ def Bez(pos):
         return bezier(waypoints, 1.)
         
         
-def solveForPhase(bezierPrev, phaseA, phaseB, filename="", saveToFile=False):   
+def solveForPhase(degree, bezierPrev, phaseA, phaseB, filename="", saveToFile=False):   
         #~ print "len 2", len(inequalities_per_phase[1])
         #~ npDef, ineq = def_find_min_t_out(inequalities_per_phase[0],inequalities_per_phase[1], bezierPrev)
-        npDef, cost, ineq = def_find_min_t_out(phaseA,phaseB, bezierPrev)
+        npDef, cost, ineq = def_find_min_t_out(degree, phaseA,phaseB, bezierPrev)
         (res,P, q, G, H) = (None, None, None, None,None)
         # now try for each constraint
         best_res = None
@@ -286,17 +348,26 @@ def solveForPhase(bezierPrev, phaseA, phaseB, filename="", saveToFile=False):
                         lastinphase1 = zeros((1,ineq[0].shape[1]))
                         lastinphase1[:,-3:] = lineIneq
                         eq = (lastinphase1, array([lineinec]))
-                        (res,P, q, G, H) = qpineq(cost, ineq, eq,verbose = True)
+                        #~ (res,P, q, G, H) = qpineq(cost, ineq, eq,verbose = True)
+                        (res,P, q, G, H) = qpineq(cost, ineq, None,verbose = True)
                         if res[1] < best_cost:
                                 best_res = res[0]
                                 best_cost = res[1]
                         #~ (res,P, q, G, H) = qpineq(cost, ineq, None)
                         #~ plt.show()
                 except ValueError:
-                        print "failed at", i
+                        vel =  npDef.start.flatten() + (npDef.curveConstraints.init_vel.flatten()) / float(npDef.degree)
+                        #~ print "failed at", i, npDef.totalTime
+                        #~ if i > 0:
+                        #~ print "test pos constraint", (phaseA[0].dot(npDef.start.flatten()) - phaseA[1] <= 0.01).all()
+                        #~ print "test pos constraint", (ineq [0].dot(npDef.start.flatten()) - ineq [1] <= 0.01).all()
+                        print "test vel constraint", (phaseA[0].dot(vel) - phaseA[1] <= 0.001).all()
+                        plt.scatter([npDef.start.flatten()[0]],[npDef.start.flatten()[1]],color="r")      
+                        #~ plotControlPoints(bez, color): 
                         pass
         if best_res is not None: 
                 plot(npDef, best_res, filename, saveToFile)
+                tg = 0
         else:
                 print "no min time found"
                 raise ValueError        
@@ -304,10 +375,35 @@ def solveForPhase(bezierPrev, phaseA, phaseB, filename="", saveToFile=False):
         
 def solveForPhases(pDef, inequalities_per_phase, filename="", saveToFile=False): 
         bezierPrev = Bez(pDef.start.reshape((-1)))
+        times = []
         for i in range(len(inequalities_per_phase)-1):
         #~ for i in range(1):
-                bezierPrev = solveForPhase(bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=saveToFile)
-                print "end point", bezierPrev(bezierPrev.max())
+                print "phase :", i
+                A = inequalities_per_phase[i]
+                #~ print "allo ?", A[0].dot(pDef.start.reshape((-1))) -  A[1] 
+                print "allo ?", bezierPrev(bezierPrev.max())
+                
+                bezierPrev = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=saveToFile)
+                print "success constraint, vel"
+                v = bezierPrev.derivate(bezierPrev.max(),1).flatten()
+                vel =  bezierPrev(bezierPrev.max()).flatten() - v / float(pDef.degree)
+                #~ print "computed vel", vel
+                #~ print "waypoints vel ", bezierPrev.waypoints()[:,-2]
+                #~ print "waypoints vel ", bezierPrev.waypoints()
+                print "test vel constraint end",  (inequalities_per_phase[i][0].dot(vel) - inequalities_per_phase[i][1] <= 0.001).all()
+                #~ print "ineq ",  inequalities_per_phase[i][0].dot(vel) - inequalities_per_phase[i][1]
+                vel = bezierPrev(bezierPrev.max()).flatten() + v / float(pDef.degree)
+                print "vel", vel                             
+                vel = 2 * bezierPrev(bezierPrev.max()).flatten() - bezierPrev.waypoints()[:,-2]
+                print "computed vel ", vel                             
+                #~ print "waypoints vel ", bezierPrev.waypoints()[:,1]
+                print "test vel constraint next", (inequalities_per_phase[i+1][0].dot(vel) - inequalities_per_phase[i+1][1] <= 0.001).all()
+                times += [norm(bezierPrev(bezierPrev.max()).flatten() - bezierPrev(bezierPrev.min()).flatten())]
+                #~ print "end point", bezierPrev(bezierPrev.max())
+        print "times ", times
+        #~ times = [ max(el,0.1) for el in times]   
+        total = sum(times) + times[-1]  #assumes last set is same as previous
+        return addSplit([(el * 2) / (total *2) for el in times])
         
 #~ def find_min_t_out(pDef, inequalities_per_phase, phase):
         #~ # first compute inequalities for each phase
@@ -320,15 +416,31 @@ if __name__ == '__main__':
         def gen(saveToFile = False):
                 plt.close()
                 while(True):
-                        try:
-                        #~ if True:
-                                pDef, inequalities_per_phase = genProblemDef(15,5)
+                        #~ try:
+                        if True:
+                                pDef, inequalities_per_phase = genProblemDef(4,4)
                                 #~ pDef.costFlag = derivative_flag.DISTANCE
                                 #~ pDef.costFlag = derivative_flag.ACCELERATION
+                                pDef.costFlag = derivative_flag.VELOCITY
+                                #~ res = computeTrajectory(pDef, saveToFile)
+                                #~ res = computeTrajectory(pDef, saveToFile)
+                                times = solveForPhases(pDef, inequalities_per_phase)
+                                #~ print "times", times
+                                # now solve with and without times
+                                #~ pDef.degree = 15
                                 #~ pDef.costFlag = derivative_flag.VELOCITY
+                                #~ oldsplits = pDef.splits
+                                
+                                #~ pDef.splits = array([times]).T 
                                 #~ res = computeTrajectory(pDef, saveToFile)
-                                #~ res = computeTrajectory(pDef, saveToFile)
-                                solveForPhases(pDef, inequalities_per_phase)
+                                #~ print "SUCESS RETIME"
+                                
+                                #~ pDef.splits = oldsplits
+                                #~ res = computeTrajectory(pDef, saveToFile, inequalities_per_phase = inequalities_per_phase)
+                                #~ print "SUCESS RANDOM"
+                                
+                                
+                                #~ plt.show()
                                 #~ pDef.costFlag = derivative_flag.ACCELERATION
                                 #~ res = computeTrajectory(pDef, saveToFile)
                                 #~ pDef.costFlag = derivative_flag.JERK
@@ -337,8 +449,8 @@ if __name__ == '__main__':
                                 plt.show()
                                 #~ plt.close()
                                 return res
-                        except ValueError:
-                                print "failed"
+                        #~ except ValueError:
+                                #~ print "failed"
                                 plt.close()
 
         (P, q, G,h, res) = (None,None,None,None, None)
@@ -359,4 +471,3 @@ if __name__ == '__main__':
 
         #~ plt.show()
 
-        np.set_printoptions(precision=3, suppress=True, threshold=np.nan)
