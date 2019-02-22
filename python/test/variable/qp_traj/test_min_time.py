@@ -234,7 +234,7 @@ def plot(pDef, res, filename, saveToFile):
         subs = bezVar.split(pDef.splits.reshape((-1)).tolist())
         final = evalBez(res,pDef)
         derivative = (int)(pDef.costFlag)
-        color = colors[derivative + gb]
+        color = colors[(derivative + gb) % len(colors)]
         gb = gb + 1
         for i, bez in enumerate(subs):
                 #~ color = colors[i]
@@ -264,22 +264,20 @@ def plot(pDef, res, filename, saveToFile):
         
         return final
         
-def computeTrajectory(pDef, saveToFile, filename = uuid.uuid4().hex.upper()[0:6], inequalities_per_phase = None):        
+def computeTrajectory(pDef, saveToFile, filename = uuid.uuid4().hex.upper()[0:6]):        
         ineq = generate_problem(pDef);
         
         #~ print "INEQ " , ineq.A
         (res,P, q, G, H) = (None, None, None, None,None)
-        try:                  
-                phaseA = inequalities_per_phase[0]
-                (lineIneq,lineinec)= (phaseA[0][i,:], phaseA[1][i])
-                lastinphase1 = zeros((1,ineq.A.shape[1]))
-                lastinphase1[:,-3:] = lineIneq
-                eq = (lastinphase1, array([lineinec]))
-                (res,P, q, G, H) = qpineq((ineq.cost.A, ineq.cost.b),(ineq.A, ineq.b),eq)
-                plot(pDef, res, filename, saveToFile)
-        except ValueError:
+        #~ try:                  
+        if True:                  
+                (res,P, q, G, H) = qpineq((ineq.cost.A, ineq.cost.b),(ineq.A, ineq.b), verbose = True)
+                #~ print "cost ", res[1]
+                plot(pDef, res[0], filename, saveToFile)
+                return res[1]
+        #~ except ValueError:
                 #~ print "FAIl traj"
-                raise ValueError
+                #~ raise ValueError
 ######################## solve a given problem ########################
 
 
@@ -296,31 +294,31 @@ def def_find_min_t_out(degree, phase0, phase1, bezierPrev, i  = None):
         c.init_vel =  bezierPrev.derivate(bezierPrev.max(),1).copy()
         pDef.curveConstraints = c
         pDef.start = bezierPrev(bezierPrev.max()).copy()
-        #~ print "start end point", pDef.start
         pDef.degree = degree
-        #~ print "degree", pDef.degree
         
         ph0 = (phase0[0][:],phase0[1][:])
         
         pDef.addInequality(ph0[0],ph0[1].reshape((-1,1)))
         ineq = generate_problem(pDef)
-        #~ print "FLAG", pDef.flag
         #add constraint on last waypoint
         lastinphase1 = zeros((phase1[1].shape[0],ineq.A.shape[1]))
         lastinphase1[:,-3:] = phase1[0]                
-        #add constraint on velocity waypoint #TODO
+        #add constraint on velocity waypoint
         # x+1 = 2 x_end - x-1
         # with P1 and p1 phase 1 matrix / vector
         # P1 (2 x_end - x-1) <= p1
-        #~ vel =  npDef.start.flatten() + (npDef.curveConstraints.init_vel.flatten()) / float(npDef.degree)
         veclcon = zeros((phase1[1].shape[0],ineq.A.shape[1]))    
         veclcon[:,-6:-3] = -phase1[0]                
-        veclcon[:,-3:] = 2*phase1[0]            
-        print "velc on", veclcon
+        veclcon[:,-3:] = 2*phase1[0]               
+        #add constraint on acceleration waypoint
+        # with P1 and p1 phase 1 matrix / vector
+        # P1 (x-2) <= p1            
+        acccon = zeros((phase1[1].shape[0],ineq.A.shape[1]))    
+        acccon[:,-9:-6] = phase1[0]              
         (matineq0, vecineq0) = (concat(ineq.A,lastinphase1), concatvec(ineq.b.reshape((-1)),phase1[1]))
         (matineq0, vecineq0) = (concat(matineq0,veclcon), concatvec(vecineq0,phase1[1]))
+        (matineq0, vecineq0) = (concat(matineq0,acccon), concatvec(vecineq0,phase1[1]))
         return pDef, (ineq.cost.A,ineq.cost.b),(matineq0, vecineq0) 
-        #~ return pDef, (ineq.cost.A,ineq.cost.b),(ineq.A,ineq.b) 
         
 def zeroBez():
         waypoints = array([[0.,0.,0.], [0.,0.,0.]]).transpose()
@@ -331,134 +329,192 @@ def Bez(pos):
         return bezier(waypoints, 1.)
         
         
-def solveForPhase(degree, bezierPrev, phaseA, phaseB, filename="", saveToFile=False):   
-        #~ print "len 2", len(inequalities_per_phase[1])
-        #~ npDef, ineq = def_find_min_t_out(inequalities_per_phase[0],inequalities_per_phase[1], bezierPrev)
+def solveForPhase(degree, bezierPrev, phaseA, phaseB, filename="", saveToFile=False, Min = False):   
         npDef, cost, ineq = def_find_min_t_out(degree, phaseA,phaseB, bezierPrev)
         (res,P, q, G, H) = (None, None, None, None,None)
         # now try for each constraint
         best_res = None
-        best_cost = 10000
+        best_cost = -10000;
+        if Min:
+                best_cost = -best_cost
         
         for i in range(phaseA[0].shape[0]):
                 try:                  
-                #~ if True:        
-                        #~ npDef, cost, ineq = def_find_min_t_out(inequalities_per_phase[0],inequalities_per_phase[1], bezierPrev, i)          
+                #~ if True:              
                         (lineIneq,lineinec)= (phaseA[0][i,:], phaseA[1][i])
                         lastinphase1 = zeros((1,ineq[0].shape[1]))
                         lastinphase1[:,-3:] = lineIneq
                         eq = (lastinphase1, array([lineinec]))
-                        #~ (res,P, q, G, H) = qpineq(cost, ineq, eq,verbose = True)
-                        (res,P, q, G, H) = qpineq(cost, ineq, None,verbose = True)
-                        if res[1] < best_cost:
+                        (res,P, q, G, H) = qpineq(cost, ineq, eq,verbose = True)
+                        b = evalBez(res[0],npDef)
+                        c = approxLengthBez(b)
+                        if (Min and c < best_cost) or ((not Min) and c > best_cost):
                                 best_res = res[0]
-                                best_cost = res[1]
-                        #~ (res,P, q, G, H) = qpineq(cost, ineq, None)
-                        #~ plt.show()
+                                best_cost = c
                 except ValueError:
                         vel =  npDef.start.flatten() + (npDef.curveConstraints.init_vel.flatten()) / float(npDef.degree)
-                        #~ print "failed at", i, npDef.totalTime
-                        #~ if i > 0:
-                        #~ print "test pos constraint", (phaseA[0].dot(npDef.start.flatten()) - phaseA[1] <= 0.01).all()
-                        #~ print "test pos constraint", (ineq [0].dot(npDef.start.flatten()) - ineq [1] <= 0.01).all()
-                        print "test vel constraint", (phaseA[0].dot(vel) - phaseA[1] <= 0.001).all()
-                        plt.scatter([npDef.start.flatten()[0]],[npDef.start.flatten()[1]],color="r")      
-                        #~ plotControlPoints(bez, color): 
+                        #~ plt.scatter([npDef.start.flatten()[0]],[npDef.start.flatten()[1]],color="r")      
                         pass
         if best_res is not None: 
                 plot(npDef, best_res, filename, saveToFile)
                 tg = 0
         else:
-                print "no min time found"
+                #~ print "no min time found"
                 raise ValueError        
         return evalBez(best_res,npDef)
         
-def solveForPhases(pDef, inequalities_per_phase, filename="", saveToFile=False): 
-        bezierPrev = Bez(pDef.start.reshape((-1)))
-        times = []
-        for i in range(len(inequalities_per_phase)-1):
-        #~ for i in range(1):
-                print "phase :", i
-                A = inequalities_per_phase[i]
-                #~ print "allo ?", A[0].dot(pDef.start.reshape((-1))) -  A[1] 
-                print "allo ?", bezierPrev(bezierPrev.max())
-                
-                bezierPrev = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=saveToFile)
-                print "success constraint, vel"
-                v = bezierPrev.derivate(bezierPrev.max(),1).flatten()
-                vel =  bezierPrev(bezierPrev.max()).flatten() - v / float(pDef.degree)
-                #~ print "computed vel", vel
-                #~ print "waypoints vel ", bezierPrev.waypoints()[:,-2]
-                #~ print "waypoints vel ", bezierPrev.waypoints()
-                print "test vel constraint end",  (inequalities_per_phase[i][0].dot(vel) - inequalities_per_phase[i][1] <= 0.001).all()
-                #~ print "ineq ",  inequalities_per_phase[i][0].dot(vel) - inequalities_per_phase[i][1]
-                vel = bezierPrev(bezierPrev.max()).flatten() + v / float(pDef.degree)
-                print "vel", vel                             
-                vel = 2 * bezierPrev(bezierPrev.max()).flatten() - bezierPrev.waypoints()[:,-2]
-                print "computed vel ", vel                             
-                #~ print "waypoints vel ", bezierPrev.waypoints()[:,1]
-                print "test vel constraint next", (inequalities_per_phase[i+1][0].dot(vel) - inequalities_per_phase[i+1][1] <= 0.001).all()
-                times += [norm(bezierPrev(bezierPrev.max()).flatten() - bezierPrev(bezierPrev.min()).flatten())]
-                #~ print "end point", bezierPrev(bezierPrev.max())
-        print "times ", times
-        #~ times = [ max(el,0.1) for el in times]   
-        total = sum(times) + times[-1]  #assumes last set is same as previous
-        return addSplit([(el * 2) / (total *2) for el in times])
+def approxLengthBez(b):
+        res = 0.
+        mx = b.max()
+        for i in range(100):
+                t1 = float(i)/100.
+                t2 = float(i+1)/100.
+                res = res + norm(b(t2).flatten() - b(t1).flatten())
+        return res
         
-#~ def find_min_t_out(pDef, inequalities_per_phase, phase):
-        #~ # first compute inequalities for each phase
-        #~ for i in range(len(inequalities_per_phase)-1):
-                #~ #contact inequalities
+def solveForPhases(pDef, inequalities_per_phase, filename="", saveToFile=False, Min = True): 
+        bezierPrev = Bez(pDef.start.reshape((-1)))
+        timesMin = [];
+        for i in range(len(inequalities_per_phase)-1):
+                A = inequalities_per_phase[i]
+                bezierPrev = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=saveToFile, Min = Min)
+                timesMin += [norm(bezierPrev(bezierPrev.max()).flatten() - bezierPrev(bezierPrev.min()).flatten())]   
+        if Min:
+                timesMin += [0.]
+        else:
+                bezierPrev = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[-1], inequalities_per_phase[-1], filename=filename, saveToFile=saveToFile, Min = False)
+                #~ timesMin += [norm(bezierPrev(bezierPrev.max()).flatten() - bezierPrev(bezierPrev.min()).flatten())]
+                timesMin += [approxLengthBez(bezierPrev)]
+        return timesMin
+        
+def findTimesToSplit(pDef, inequalities_per_phase, filename="", saveToFile=False):
+        times1 = solveForPhases(pDef, inequalities_per_phase, filename, saveToFile, Min=True)
+        times2 = solveForPhases(pDef, inequalities_per_phase, filename, saveToFile, Min=False)
+        avg = [(times1[i] + times2[i]) / 2. for i in range(len(times1))]
+        total = sum(avg)
+        avg = addSplit([el / total for el in avg])
+        #~ print "avg", avg
+        return avg[:-1]
 
 if __name__ == '__main__':
                 
+                
+        totalScenarios = 0
+        totalMinDist = 0
+        totalHeuristicTimes = 0
+        totalHeuristicTimesHighD = 0
+        totalRandomTimes = 0
+        totalRandomTimesHighD = 0
+        avgcost = 0.
+        avgcostRand = 0.
+        avgcostHighD = 0.
+        avgcostRandHighD = 0.
         #solve and gen problem
         def gen(saveToFile = False):
+                global totalScenarios
+                global totalMinDist
+                global totalScenarios
+                global totalHeuristicTimes
+                global totalRandomTimes
+                global totalHeuristicTimesHighD
+                global totalRandomTimesHighD
+                global avgcost
+                global avgcostRand
+                global avgcostHighD
+                global avgcostRandHighD
                 plt.close()
                 while(True):
-                        #~ try:
-                        if True:
-                                pDef, inequalities_per_phase = genProblemDef(4,4)
-                                #~ pDef.costFlag = derivative_flag.DISTANCE
-                                #~ pDef.costFlag = derivative_flag.ACCELERATION
-                                pDef.costFlag = derivative_flag.VELOCITY
-                                #~ res = computeTrajectory(pDef, saveToFile)
-                                #~ res = computeTrajectory(pDef, saveToFile)
-                                times = solveForPhases(pDef, inequalities_per_phase)
+                        totalScenarios = totalScenarios +1
+                        pDef, inequalities_per_phase = genProblemDef(5,4)
+                        #~ pDef.costFlag = derivative_flag.DISTANCE
+                        #~ pDef.costFlag = derivative_flag.ACCELERATION
+                        pDef.costFlag = derivative_flag.VELOCITY
+                        #~ res = computeTrajectory(pDef, saveToFile)
+                        #~ res = computeTrajectory(pDef, saveToFile)
+                        try:
+                                times = findTimesToSplit(pDef, inequalities_per_phase)
+                                totalMinDist = totalMinDist + 1
                                 #~ print "times", times
                                 # now solve with and without times
-                                #~ pDef.degree = 15
-                                #~ pDef.costFlag = derivative_flag.VELOCITY
-                                #~ oldsplits = pDef.splits
-                                
-                                #~ pDef.splits = array([times]).T 
-                                #~ res = computeTrajectory(pDef, saveToFile)
-                                #~ print "SUCESS RETIME"
-                                
-                                #~ pDef.splits = oldsplits
-                                #~ res = computeTrajectory(pDef, saveToFile, inequalities_per_phase = inequalities_per_phase)
-                                #~ print "SUCESS RANDOM"
-                                
-                                
+                                pDef.degree = 4
+                                pDef.costFlag = derivative_flag.VELOCITY
+                                oldsplits = pDef.splits
                                 #~ plt.show()
-                                #~ pDef.costFlag = derivative_flag.ACCELERATION
-                                #~ res = computeTrajectory(pDef, saveToFile)
-                                #~ pDef.costFlag = derivative_flag.JERK
-                                #~ res = computeTrajectory(pDef, saveToFile)
-                                plt.legend(loc='upper left')
-                                plt.show()
-                                #~ plt.close()
+                                
+                                pDef.splits = array([times]).T 
+                                global gb
+                                gb = -1
+                                try:
+                                        cos = computeTrajectory(pDef, saveToFile)
+                                        totalHeuristicTimes = totalHeuristicTimes +1
+                                        avgcost = avgcost + cos
+                                except ValueError:
+                                        pass
+                                        #~ print "failed"
+                                        #~ plt.close()
+                                #~ print "SUCESS RETIME"
+                                try:
+                                        pDef.splits = oldsplits
+                                        cos = computeTrajectory(pDef, saveToFile)
+                                        totalRandomTimes = totalRandomTimes +1
+                                        avgcostRand = avgcostRand + cos
+                                except ValueError:
+                                        pass
+                                        
+                                pDef.degree = 9
+                                pDef.costFlag = derivative_flag.VELOCITY
+                                oldsplits = pDef.splits
+                                
+                                pDef.splits = array([times]).T 
+                                global gb
+                                gb = -1
+                                try:
+                                        cos = computeTrajectory(pDef, saveToFile)
+                                        totalHeuristicTimesHighD = totalHeuristicTimesHighD +1
+                                        avgcostHighD = avgcostHighD + cos
+                                except ValueError:
+                                        pass
+                                        #~ print "failed"
+                                        #~ plt.close()
+                                #~ print "SUCESS RETIME"
+                                try:
+                                        pDef.splits = oldsplits
+                                        cos = computeTrajectory(pDef, saveToFile)
+                                        totalRandomTimesHighD = totalRandomTimesHighD +1
+                                        avgcostRandHighD = avgcostRandHighD + cos
+                                except ValueError:
+                                        pass
+                                #~ print "SUCESS RANDOM"
+                        
+                        
+                        #~ plt.show()
+                        #~ pDef.costFlag = derivative_flag.ACCELERATION
+                        #~ res = computeTrajectory(pDef, saveToFile)
+                        #~ pDef.costFlag = derivative_flag.JERK
+                        #~ res = computeTrajectory(pDef, saveToFile)
+                        #~ plt.legend(loc='upper left')
+                        #~ plt.show()
+                        #~ plt.close()
                                 return res
-                        #~ except ValueError:
-                                #~ print "failed"
-                                plt.close()
+                        except ValueError:
+                                print "failed"
+                        except:
+                                totalScenarios = totalScenarios -1
+                                #~ plt.close()
 
         (P, q, G,h, res) = (None,None,None,None, None)
-        for i in range(1):
+        for i in range(1000):
                 #~ (P, q, G,h, res) = gen(False)
-                res = gen(False)
+                gen(False)
+                gb = -1
                 #~ if res[0] != None:
                         #~ break
+        print "total scenarios", totalScenarios 
+        print "total min time success", totalMinDist
+        print "total HeuristicTimes", totalHeuristicTimes, ' cost ', avgcost / totalHeuristicTimes
+        print "total totalRandomTimes", totalRandomTimes, ' cost ', avgcostRand / totalRandomTimes
+        print "total totalHeuristicTimesHighD", totalHeuristicTimesHighD, ' cost ', avgcostHighD / totalHeuristicTimesHighD
+        print "total totalRandomtotalRandomTimesHighDTimes", totalRandomTimesHighD, ' cost ', avgcostRandHighD / totalRandomTimesHighD
 
         def cost(P, q, G,h, x):
                 print (x.T.dot(P).dot(x) / 2. + q.dot(x))
