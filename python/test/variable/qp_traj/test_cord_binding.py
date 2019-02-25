@@ -33,9 +33,9 @@ def getRightMostLine(ptList):
         pt2 = array([0.,0.,0.])
         for pt in ptList:
                 if pt[0] > pt1[0]:
-                       pt1 =  pt
+                       pt1 =  pt[:]
                 elif pt[0] > pt2[0]:
-                       pt2 =  pt
+                       pt2 =  pt[:]
         if pt1[1] < pt2[1]:
                 return [pt2,pt1]
         else:
@@ -123,15 +123,20 @@ colors2=[colors[len(colors)-1-i] for i in range(len(colors))]
 def genProblemDef(numvars = 3, numcurves= 4):
         valDep = array([[np.random.uniform(0., 1.), np.random.uniform(0.,5.), 0. ]]).T
         valEnd = array([[np.random.uniform(5., 10.), np.random.uniform(0.,5.), 0.]]).T
+        #~ valEnd = array([[1.,1.,0.]]).T
+        #~ valEnd = array([[2.,2.,2.]]).T
         pDef = problemDefinition()
         #~ pDef.flag =  int(constraint_flag.END_POS) | int(constraint_flag.INIT_POS) | int(constraint_flag.END_VEL)
-        pDef.flag =  int(constraint_flag.END_POS) |  int(constraint_flag.END_VEL)
-        #~ pDef.flag =  constraint_flag.INIT_POS
+        #~ pDef.flag =  int(constraint_flag.END_POS) |  int(constraint_flag.END_VEL)
+        #~ pDef.flag =  constraint_flag.INIT_POS | constraint_flag.END_POS 
+        #~ pDef.flag =  constraint_flag.INIT_POSes
         #~ pDef.flag =  constraint_flag.END_POS
+        #~ pDef.flag =  constraint_flag.INIT_POS | constraint_flag.INIT_VEL
+        #~ pDef.flag =  constraint_flag.INIT_POS | constraint_flag.INIT_VEL
         pDef.start = valDep
         pDef.end = valEnd
         pDef.degree = numvars - 1
-        pDef.splits = array([genSplit(numcurves)]).T        
+        pDef.splits = array([genSplit(numcurves)]).T   
         genConstraintsPerPhase(pDef, numcurves) #load random inequality constraints
         saveProblem(pDef)
         return pDef
@@ -141,22 +146,11 @@ def __getbezVar(pDef): #for plotting only
         pData = setupControlPoints(pDef)
         return vB.fromBezier(pData.bezier())
 
-def __addZeroConstants(res, pDef):
-        r = res.tolist()
-        if (int)(constraint_flag.INIT_POS) & (int)(pDef.flag):
-                r = [0.,0.,0.] + r                
-                if (int)(constraint_flag.INIT_VEL) & (int)(pDef.flag):
-                        r = [0.,0.,0.] + r
-        if (int)(constraint_flag.END_POS) & (int)(pDef.flag):
-                r = r + [0.,0.,0.]
-                if (int)(constraint_flag.END_VEL) & (int)(pDef.flag):
-                        r = r + [0.,0.,0.]
-        return array(r)
-        
 import time
 import math
-        
-def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
+
+
+def computeTrajectory(pDef, saveToFile, filename = uuid.uuid4().hex.upper()[0:6]):
         global idxFile
         global colors
         bezVar = __getbezVar(pDef)
@@ -164,28 +158,28 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
         a = time.clock()
         ineq = generate_problem(pDef);
         b = time.clock()
-        print "clock ", b-a
+        #~ print "clock ", b-a
         
         #qp vars
         dimVar = ineq.cost.A.shape[0]
         P = ineq.cost.A * 2.
         q = ineq.cost.b.flatten()
-        G = zeros([2,dimVar])
-        h = zeros(2)
-        G[0,-1] =  1 ; h[0]=1.
-        G[1,-1] = -1 ; h[1]=0.
-        #~ G = vstack([G,ineq.A])
         G = ineq.A
-        #~ h = concatvec(h,ineq.b.reshape((-1)))
         h = ineq.b.reshape((-1))
+        
+        #fix z = 0
+        Eq = zeros((dimVar,dimVar)); 
+        for i in range(2,dimVar,3):
+                Eq[i,i]=1.
+        eq = zeros(dimVar)
         
         dimExtra = 0
         
-        C = None; d = None
-        #~ try:
-        if True:                        
+        C = Eq; d = eq
+        try:
+        #~ if True:                        
                 res = quadprog_solve_qp(P, q, G=G, h=h, C=C, d=d)
-                res = __addZeroConstants(res, pDef)
+                #~ res = quadprog_solve_qp(P, q, G=None, h=None, C=C, d=d)
                 #plot bezier
                 derivative = (int)(pDef.costFlag)
                 color = colors[derivative]
@@ -196,7 +190,7 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
                                 plotBezier(test, color, label = labels[derivative], linewidth =7 - derivative*2)
                         else:
                                 plotBezier(test, color, linewidth =7 - derivative*2)
-                if save:
+                if saveToFile:
                         plt.savefig(filename+str(idxFile))
                 #plot subs control points
                 for i, bez in enumerate(subs):
@@ -204,44 +198,63 @@ def computeTrajectory(pDef, save, filename = uuid.uuid4().hex.upper()[0:6]):
                         test = bez.toBezier3(res[:])
                         #~ plotBezier(test, color)
                         #~ plotControlPoints(test, color)
-                if save:
+                if saveToFile:
                         plt.savefig("subcp"+filename+str(idxFile))
                 final = bezVar.toBezier3(res[:])
                 #~ plotControlPoints(final, "black")
-                if save:
+                if saveToFile:
                         plt.savefig("cp"+filename+str(idxFile))
                 idxFile += 1
-                if save:
+                if saveToFile:
                         plt.close()
                 #~ else:
                         #~ plt.show()
                 
                 return final
-        #~ except ValueError:
-                #~ plt.close()
-                return P, q
+        except ValueError:
+                raise ValueError
+                #~ return P, q, res
+                return P, q, G,h, res
 ######################## solve a given problem ########################
 
 
 #solve and gen problem
-def gen(save = False):
-        pDef = genProblemDef(5,3)
-        pDef.costFlag = derivative_flag.DISTANCE
-        computeTrajectory(pDef, save)
-        pDef.costFlag = derivative_flag.VELOCITY
-        computeTrajectory(pDef, save)
-        pDef.costFlag = derivative_flag.ACCELERATION
-        computeTrajectory(pDef, save)
-        pDef.costFlag = derivative_flag.JERK
-        res = computeTrajectory(pDef, save)
-        plt.legend(loc='upper left')
-        plt.show()
-        return res
+def gen(saveToFile = False):
+        plt.close()
+        try:
+        #~ if True:
+                pDef = genProblemDef(10,3)
+                #~ pDef.costFlag = derivative_flag.DISTANCE
+                #~ res = computeTrajectory(pDef, saveToFile)
+                pDef.costFlag = derivative_flag.VELOCITY
+                res = computeTrajectory(pDef, saveToFile)
+                pDef.costFlag = derivative_flag.ACCELERATION
+                res = computeTrajectory(pDef, saveToFile)
+                pDef.costFlag = derivative_flag.JERK
+                res = computeTrajectory(pDef, saveToFile)
+                plt.legend(loc='upper left')
+                plt.show()
+                #~ plt.close()
+                return res
+        except ValueError:
+                print "failed"
+                #~ plt.close()
 
-res = None
+(P, q, G,h, res) = (None,None,None,None, None)
 for i in range(1):
-        res = gen(False)
+        (P, q, G,h, res) = gen(False)
         #~ if res[0] != None:
                 #~ break
+
+def cost(P, q, G,h, x):
+        print (x.T.dot(P).dot(x) / 2. + q.dot(x))
+        print "ineq ?",  (G.dot(x) -h <=0.0001).all()
+
+#~ zero = array([2.,2.,0.])
+#~ print "res, " ; cost(P,q, G,h, res)
+#~ print "zero, " ; cost(P,q, G,h, zero)
+#~ print "-zero, " ; cost(P,q, G,h, -zero)
+
+#~ plt.show()
 
 np.set_printoptions(precision=3, suppress=True, threshold=np.nan)
