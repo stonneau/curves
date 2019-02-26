@@ -38,6 +38,7 @@ def findTimesToSplit(pDef, inequalities_per_phase, filename="", saveToFile=False
         #~ print "avg", avg
         return [0 for _ in times1], times1
 
+
 def solveForPhases(pDef, inequalities_per_phase, filename="", saveToFile=False, Min = True): 
         bezierPrev = Bez(pDef.start.reshape((-1)))
         timesMin = [];
@@ -48,12 +49,11 @@ def solveForPhases(pDef, inequalities_per_phase, filename="", saveToFile=False, 
                         timesMin += [time]   
                         #~ print "ok"
                 except:
-                        print "relaxvel"
+                        print "relax"
                         bezierPrev, time = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=
                         saveToFile, Min = Min, relax_vel = True)
                         print "saved"
                         timesMin += [time]
-        plt.show()
         if Min:
                 timesMin += array([0.01])
         else:
@@ -96,66 +96,77 @@ def gen(saveToFile = False, degree = 5, numcurves= 3):
                 #~ if True:
                         timesMin,timesMax = findTimesToSplit(pDef, inequalities_per_phase)
                         totalMinDist = totalMinDist + 1
-                        for i in range(1):
-                                #~ if True:
-                                try:
-                                        pDef.splits = array([genSplit(numcurves,timesMin,timesMax)]).T 
-                                        cos1, res1 = computeTrajectory(pDef, saveToFile)
-                                        #~ pDef.splits = array([genSplit(numcurves,timesMin,timesMax)]).T 
-                                        #~ cos2, res2 = computeTrajectory(pDef, saveToFile)
-                                        b1 = evalBez(res1, pDef)
-                                        #~ b2 = evalBez(res2, pDef)
-                                        #~ plt.close()
-                                        #~ plotBezier(b1, "r", label = None, linewidth = 2.0)
-                                        #~ plotBezier(b2, "g", label = None, linewidth = 2.0)
-                                        #~ plt.show()  
-                                        totalRandomTimes = totalRandomTimes + 1 
-                                        return
-                                except ValueError:
-                                        pass
-                                        plt.close()                        
+                        return
                 except ValueError:
                         #~ print "total fail"
                         pass
+                except:
+                        totalScenarios = totalScenarios -1
 
 (P, q, G,h, res) = (None,None,None,None, None)
-totaltrials = 100
 
+from cPickle import dump, load
 
+        
+totaltrials = 100 
 benchs = []
-degree = []
-numphases = []
-
-#~ def stat(degree, numphases):
-        #~ [gen(False, degree, numphases)]
-
-for i in range(totaltrials):
-        #~ (P, q, G,h, res) = gen(False)
-        gen(False)
-        gb = -1
-        #~ if res[0] != None:
-                #~ break
-print "totalScenarios", totalScenarios 
-print "total success", totalMinDist 
-print "total average  random time to success", float (totalRandomTimes) / float(totalMinDist)
-print "avg time to generate problem", float (qp_times) / float(num_qp_times)
-print "avg time for successful qp", float (problem_gen_times) / float(num_qp_times)
-#~ print "total HeuristicTimes", totalHeuristicTimes, ' cost ', avgcost / totalHeuristicTimes
-#~ print "total totalRandomTimes", totalRandomTimes, ' cost ', avgcostRand / totalRandomTimes
-#~ print "total totalHeuristicTimesHighD", totalHeuristicTimesHighD, ' cost ', avgcostHighD / totalHeuristicTimesHighD
-#~ print "total totalRandomtotalRandomTimesHighDTimes", totalRandomTimesHighD, ' cost ', avgcostRandHighD / totalRandomTimesHighD
-
-def cost(P, q, G,h, x):
-        print (x.T.dot(P).dot(x) / 2. + q.dot(x))
-        print "ineq ?",  (G.dot(x) -h <=0.0001).all()
+degrees = [5,7]
+numphases = [2, 6]
 
 
+def savebench():
+        res = [benchs, degrees, numphases]
+        fname = "success_rate_min_dist_relax"
+        f = open(fname, "w")
+        dump(res,f)
+        f.close()
+        
+def loadbench():
+        global benchs
+        global degrees
+        global numphases
+        fname = "success_rate_min_dist_relax"
+        f = open(fname, "r")
+        res = load(f)
+        f.close()
+        benchs = res[0]
+        degrees = res[1]
+        numphases = res[2]
 
+def gen_bench():
+        global benchs
+        def stat(degree, numphases):
+                print "numphases ", numphases
+                [gen(False, degree, numphases) for _ in range(totaltrials)]
+                res = (float)( totalMinDist) / (float) (totalScenarios)       
+                global totalScenarios
+                global totalMinDist
+                totalScenarios = 0
+                totalMinDist = 0
+                return res
+                
+        def stats(degree):
+                return [[numphase, stat(degree, numphase)] for numphase in numphases]
 
-#~ zero = array([2.,2.,0.])
-#~ print "res, " ; cost(P,q, G,h, res)
-#~ print "zero, " ; cost(P,q, G,h, zero)
-#~ print "-zero, " ; cost(P,q, G,h, -zero)
+        for i, deg in enumerate(degrees):
+                res = array(stats(deg))
+                benchs += [res]
+       
+def plotbench():
+        plt.close()
+        global benchs
+        for i, ben in enumerate(benchs):
+                ben[:,0];
+                ben[:,1];
+                colors[i];
+                degrees[i]
+                plt.plot(ben[:,0],ben[:,1],color=colors[i],label="degree " + str(degrees[i]),linewidth=1 )  
+                plt.scatter(ben[:,0],ben[:,1],color=colors[i],label="degree " + str(degrees[i]),linewidth=1 )  
+                plt.legend(loc='upper left')
+        
+                
+gen_bench(); savebench();
+#~ loadbench()
 
-#~ plt.show()
-
+plotbench()    
+plt.show()

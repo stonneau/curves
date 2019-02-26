@@ -75,6 +75,7 @@ BOOST_PYTHON_MODULE(hpp_spline)
             .def("waypoints", &wayPointsToList<bezier_t,3>)
             .def_readonly("degree", &bezier_t::degree_)
             .def_readonly("nbWaypoints", &bezier_t::size_)
+            .def_readonly("mult_T", &bezier_t::mult_T_)
         ;
     /** END bezier curve**/
 

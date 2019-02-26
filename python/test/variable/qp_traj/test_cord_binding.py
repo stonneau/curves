@@ -128,7 +128,7 @@ def genProblemDef(numvars = 3, numcurves= 4):
         pDef = problemDefinition()
         #~ pDef.flag =  int(constraint_flag.END_POS) | int(constraint_flag.INIT_POS) | int(constraint_flag.END_VEL)
         #~ pDef.flag =  int(constraint_flag.END_POS) |  int(constraint_flag.END_VEL)
-        #~ pDef.flag =  constraint_flag.INIT_POS | constraint_flag.END_POS 
+        pDef.flag =  constraint_flag.INIT_POS | constraint_flag.END_POS 
         #~ pDef.flag =  constraint_flag.INIT_POSes
         #~ pDef.flag =  constraint_flag.END_POS
         #~ pDef.flag =  constraint_flag.INIT_POS | constraint_flag.INIT_VEL
@@ -223,7 +223,7 @@ def gen(saveToFile = False):
         plt.close()
         try:
         #~ if True:
-                pDef = genProblemDef(10,3)
+                pDef = genProblemDef(10,5)
                 #~ pDef.costFlag = derivative_flag.DISTANCE
                 #~ res = computeTrajectory(pDef, saveToFile)
                 pDef.costFlag = derivative_flag.VELOCITY
