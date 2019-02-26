@@ -43,16 +43,16 @@ def solveForPhases(pDef, inequalities_per_phase, filename="", saveToFile=False, 
         timesMin = [];
         for i in range(len(inequalities_per_phase)-1):
                 A = inequalities_per_phase[i]
-                try:
-                        bezierPrev, time = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=saveToFile, Min = Min, relax_vel = False)
-                        timesMin += [time]   
+                #~ try:
+                bezierPrev, time = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=saveToFile, Min = Min, relax_vel = False)
+                timesMin += [time]   
                         #~ print "ok"
-                except:
-                        print "relaxvel"
-                        bezierPrev, time = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=
-                        saveToFile, Min = Min, relax_vel = True)
-                        print "saved"
-                        timesMin += [time]
+                #~ except:
+                        #~ print "relaxvel"
+                        #~ bezierPrev, time = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=
+                        #~ saveToFile, Min = Min, relax_vel = True)
+                        #~ print "saved"
+                        #~ timesMin += [time]
         plt.show()
         if Min:
                 timesMin += array([0.01])
@@ -92,6 +92,7 @@ def gen(saveToFile = False, degree = 5, numcurves= 3):
                 pDef, inequalities_per_phase = genProblemDef(degree,numcurves)
                 pDef.costFlag = derivative_flag.VELOCITY
                 totalScenarios = totalScenarios + 1    
+                timesMin,timesMax = findTimesToSplit(pDef, inequalities_per_phase)
                 try:
                 #~ if True:
                         timesMin,timesMax = findTimesToSplit(pDef, inequalities_per_phase)
