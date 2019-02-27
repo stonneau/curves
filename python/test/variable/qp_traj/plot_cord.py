@@ -9,12 +9,12 @@ def plotBezier(bez, color, label = None, linewidth = 2.0):
         y = points1[:,1]
         plt.plot(x,y,color,linewidth=linewidth, label=label)
         
-def plotControlPoints(bez, color):
+def plotControlPoints(bez, color,linewidth=2):
         wps = bez.waypoints()
         wps = np.array([wps[:2,i] for i in range(wps.shape[1]) ])
         x = wps[:,0]
         y = wps[:,1]
-        plt.scatter(x,y,color=color)        
+        plt.scatter(x,y,color=color, linewidth = linewidth)        
         
 def plotPoly(lines, color):
         step = 1000.

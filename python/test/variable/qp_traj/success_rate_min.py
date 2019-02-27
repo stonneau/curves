@@ -25,7 +25,7 @@ def computeTrajectory(pDef, saveToFile, filename = uuid.uuid4().hex.upper()[0:6]
                 problem_gen_times = problem_gen_times + (b-a)
                 qp_times = qp_times + (d-c)
                 #~ print "cost ", res[1]
-                plot(pDef, res[0], filename, saveToFile)
+                #~ plot(pDef, res[0], filename, saveToFile)
                 return res[1], res[0]
         #~ except ValueError:
                 #~ print "FAIl traj"
@@ -33,10 +33,11 @@ def computeTrajectory(pDef, saveToFile, filename = uuid.uuid4().hex.upper()[0:6]
 ######################## solve a given problem ########################
 
 def findTimesToSplit(pDef, inequalities_per_phase, filename="", saveToFile=False):
-        #~ times2 = solveForPhases(pDef, inequalities_per_phase, filename, saveToFile, Min=False)
+        times2 = solveForPhases(pDef, inequalities_per_phase, filename, saveToFile, Min=False)
         times1 = solveForPhases(pDef, inequalities_per_phase, filename, saveToFile, Min=True)
         #~ print "avg", avg
-        return [0 for _ in times1], times1
+        #~ return [0 for _ in times1], times1
+        return times2, times1
 
 
 totalScenarios = 0
@@ -86,16 +87,19 @@ def gen(saveToFile = False, degree = 5, numcurves= 3):
 from cPickle import dump, load
 
         
-totaltrials = 100    
+totaltrials = 100
 benchs = []
 #~ degrees = [5,7,9,12]
-degrees = [7]
-numphases = [6]
+#~ degrees = [5,7,9,12]
+degrees = [4]
+#~ numphases = [2,3,4,5,6]
+#~ numphases = [2,3,4,5,6]
+numphases = [4]
 
 
 def savebench():
         res = [benchs, degrees, numphases]
-        fname = "success_rate_min_dist"
+        fname = "success_rate_min_dist_10"
         f = open(fname, "w")
         dump(res,f)
         f.close()
@@ -104,7 +108,7 @@ def loadbench():
         global benchs
         global degrees
         global numphases
-        fname = "success_rate_min_dist"
+        fname = "success_rate_min_dist_10"
         f = open(fname, "r")
         res = load(f)
         f.close()
@@ -143,8 +147,8 @@ def plotbench():
                 colors[i];
                 degrees[i]
                 plt.plot(ben[:,0],ben[:,1],color=colors[i],label="degree " + str(degrees[i]),linewidth=1 )  
-                plt.scatter(ben[:,0],ben[:,1],color=colors[i],label="degree " + str(degrees[i]),linewidth=1 )  
-                plt.legend(loc='upper left')
+                plt.scatter(ben[:,0],ben[:,1],color=colors[i],linewidth=1 )  
+                plt.legend(loc='lower left')
         
                 
 #~ gen_bench(); savebench();
