@@ -44,9 +44,10 @@ def solveForPhases(pDef, inequalities_per_phase, filename="", saveToFile=False, 
         for i in range(len(inequalities_per_phase)-1):
                 A = inequalities_per_phase[i]
                 #~ try:
-                bezierPrev, time = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=saveToFile, Min = Min, relax_vel = False)
+                bezierPrev, time, retime = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=saveToFile, Min = Min, relax_vel = False)
+                bezierPrev = retime
                 timesMin += [time]   
-                        #~ print "ok"
+                #~ print "ok", timesMin
                 #~ except:
                         #~ print "relaxvel"
                         #~ bezierPrev, time = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=
@@ -57,7 +58,7 @@ def solveForPhases(pDef, inequalities_per_phase, filename="", saveToFile=False, 
         if Min:
                 timesMin += array([0.01])
         else:
-                bezierPrev, time = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[-1], inequalities_per_phase[-1], filename=filename, saveToFile=saveToFile, Min = False)
+                bezierPrev, time, retime = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[-1], inequalities_per_phase[-1], filename=filename, saveToFile=saveToFile, Min = False)
                 #~ timesMin += [norm(bezierPrev(bezierPrev.max()).flatten() - bezierPrev(bezierPrev.min()).flatten())]
                 #~ timesMin += [approxLengthBez(bezierPrev)]
                 timesMin += [time]

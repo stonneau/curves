@@ -279,16 +279,17 @@ def plot(pDef, res, filename, saveToFile, resIsBezier = False):
         return final
         
 def oneVelIneq(pDef, ineq):
-        bvel = 10*ones(3)
-        
-        bezVar, b = __getbezVar(pDef)
-        #derivates
+        bvel = 10.*ones(3)
+        bezVar = __getbezVar(pDef)
+        b = bezVar.bezier
+        #derivatesb
         db = b.compute_derivate(1)
         (matineq0, vecineq0) = ineq
         for i in range(db.nbWaypoints):
-                A,b = db.waypoints().A[:, i*3:i*3+3].transpose() * db.mult_T , db.waypoints().b[:,i] * db.mult_T
+                A,b = db.waypoints().A[:, i*3:i*3+3].transpose() / db.max() , db.waypoints().b[:,i] / db.max()
+                #~ A,b = db.waypoints().A[:, i*3:i*3+3].transpose() , db.waypoints().b[:,i]
                 (matineq0, vecineq0) = (concat(matineq0, A), concatvec(vecineq0,bvel - b))    
-                (matineq0, vecineq0) = (concat(matineq0,-A), concatvec(vecineq0,bvel + b))    
+                (matineq0, vecineq0) = (concat(matineq0,-A), concatvec(vecineq0,bvel + b)) 
         return (matineq0, vecineq0)
         
 
@@ -353,12 +354,14 @@ def def_find_min_t_out(degree, phase0, phase1, bezierPrev, i  = None, relax_vel 
                         print "pbkqjlkjqs", ineq.cost.b
                         raise Exception('I know Python!') 
                         
-        (matineq0, vecineq0) = (ineq.A, ineq.b.reshape((-1)))        
+        #~ (matineq0, vecineq0) = (ineq.A, ineq.b.reshape((-1)))   
+          
         
         #add constraint on last waypoint
         lastinphase1 = zeros((phase1[1].shape[0],ineq.A.shape[1]))
         lastinphase1[:,-3:] = phase1[0]     
-        (matineq0, vecineq0) = (concat(ineq.A,lastinphase1), concatvec(ineq.b.reshape((-1)),phase1[1]))           
+        (matineq0, vecineq0) = (concat(ineq.A,lastinphase1), concatvec(ineq.b.reshape((-1)),phase1[1]))         
+        (matineq0, vecineq0) = oneVelIneq(pDef,(matineq0, vecineq0))     
         #add constraint on velocity waypoint
         # x+1 = 2 x_end - x-1
         # with P1 and p1 phase 1 matrix / vector
@@ -419,8 +422,8 @@ def find_minimum_time_constrained_vel(bezierPrev, bez, phaseA, phaseB, Min = Tru
         
         (matineq0, vecineq0) = (ones(1)*(-1),ones(1)*(-0.01)) # t > 0
         #~ (matineq0, vecineq0) = (zeros(1),zeros(1)) 
-        (matineq0, vecineq0) = (concatvec(matineq0, ones(1)), concatvec(vecineq0,ones(1)*2)) 
-        bvel = 10*ones(3)
+        #~ (matineq0, vecineq0) = (concatvec(matineq0, ones(1)), concatvec(vecineq0,ones(1)*2)) 
+        bvel = 10.*ones(3)
         #~ velConstraint = bezierPrev.compute_derivate(1)(bezierPrev.max()).flatten()
         #~ velConstraint  = bez.derivate(bez.min(),1).flatten()
         T_prev_phase = bezierPrev.max()
@@ -467,6 +470,7 @@ def find_minimum_time_constrained_vel(bezierPrev, bez, phaseA, phaseB, Min = Tru
         (matineq0, vecineq0) = (concatvec(matineq0, veclcon_t), concatvec(vecineq0,veclcon_c)) 
         #add constraint on acceleration waypoint
         #TODO
+        #~ print "velocity wp" , vecineq0.shape
         
         #add constraint on end velocity waypoint
         # x+1 = x_end + velConstraint(i) / n / T_next with T_next = 1
@@ -480,8 +484,10 @@ def find_minimum_time_constrained_vel(bezierPrev, bez, phaseA, phaseB, Min = Tru
         #~ # comment
         #~ print "A A", deg
         veclcon_c = phaseB[1] - phaseB[0].dot(wps[:,-2].flatten()) 
-        #~ (matineq0, vecineq0) = (concatvec(matineq0, veclcon_t), concatvec(vecineq0,veclcon_c)) 
+        (matineq0, vecineq0) = (concatvec(matineq0, veclcon_t), concatvec(vecineq0,veclcon_c)) 
         #~ print "A ", deg
+        
+        #~ print "next velocity wp" , vecineq0.shape
         
         #polytope velocity constraints
         wps = b.waypoints()
@@ -491,12 +497,13 @@ def find_minimum_time_constrained_vel(bezierPrev, bez, phaseA, phaseB, Min = Tru
         # - bevel T <= -Ix
         # for all x, I x/ T >= -bvel
         # - bevel T <= Ix
-        for i in range(b.nbWaypoints):
-                if i != 1:
-                        A = wps[:,i].flatten()
-                        (matineq0, vecineq0) = (concatvec(matineq0, -bvel), concatvec(vecineq0, A))   
-                        (matineq0, vecineq0) = (concatvec(matineq0, -bvel), concatvec(vecineq0,-A))   
-                # TODO ADD CONSTRAINT FOR 1
+        for i in range(1,b.nbWaypoints):
+                #~ if i != 1:
+                A = wps[:,i].flatten()
+                #~ (matineq0, vecineq0) = (concatvec(matineq0, -bvel), concatvec(vecineq0, A))   
+                #~ (matineq0, vecineq0) = (concatvec(matineq0, -bvel), concatvec(vecineq0,-A))   
+                # TODO ADD CONSTRAINT FOR 1        
+        #~ print "polytope velocity consp" , vecineq0.shape
         try:                
                 #~ print "C ", deg
                 vecineq0 = vecineq0 + ones(vecineq0.shape[0])*0.0001
@@ -504,6 +511,16 @@ def find_minimum_time_constrained_vel(bezierPrev, bez, phaseA, phaseB, Min = Tru
                 #~ print "D", deg
         except:
                 print "dafuq !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", (matineq0.dot(1.)- vecineq0 < 0.001 ).all()
+                print "dafuq !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", (matineq0.dot(1.)- vecineq0).shape
+                print "dafuq !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", np.argmax(np.max((matineq0.dot(1.)- vecineq0), axis=0))
+                x = (matineq0.dot(1.)- vecineq0)
+                idx =  np.where(x == np.max(x))
+                #~ for i in range(a.shape[0])
+                print "idx, ", idx
+                print "euh, ", x[idx]
+                print "euh, ", matineq0[idx]
+                print "euh, ", vecineq0[idx]
+                raise ValueError
                 #~ print "prev max ", bezierPrev.max()
                 #~ print "Unexpected error:", sys.exc_info()[0]
         #rewrite velocity wp
@@ -524,6 +541,8 @@ def find_minimum_time_constrained_vel(bezierPrev, bez, phaseA, phaseB, Min = Tru
         #~ if abs(t - 1.)>0.1:
         #~ print "t ", t
                 #~ t = 1.
+        if t > 1.:
+                print "1 is not a solution ", (matineq0.dot(1.)- vecineq0 < 0.001 ).all()
         return t, bretime
         
         
@@ -551,6 +570,14 @@ def solveForPhase(degree, bezierPrev, phaseA, phaseB, filename="", saveToFile=Fa
                         (res,P, q, G, H) = qpineq(cost, ineq, eq,verbose = True)
                         foundOne = True
                         b = evalBez(res[0],npDef)
+                        
+                        #check derivative
+                        db = b.compute_derivate(1)            
+                        for i in range(db.nbWaypoints):             
+                                wp = db.waypoints()[:,i].flatten()
+                                if not (wp < 10.0001 * ones(3)).all() or not (wp > (-10.001) * ones(3)).all():
+                                        print "constraint !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  violated", i, wp
+                        
                         c = approxLengthBez(b)
                         #~ c = res[1]
                         c, br = find_minimum_time_constrained_vel(bezierPrev, b, phaseA, phaseB, Min)

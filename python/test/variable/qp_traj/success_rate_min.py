@@ -86,11 +86,11 @@ def gen(saveToFile = False, degree = 5, numcurves= 3):
 from cPickle import dump, load
 
         
-totaltrials = 10    
+totaltrials = 100    
 benchs = []
 #~ degrees = [5,7,9,12]
-degrees = [5]
-numphases = [2, 6]
+degrees = [7]
+numphases = [6]
 
 
 def savebench():
@@ -130,6 +130,8 @@ def gen_bench():
         for i, deg in enumerate(degrees):
                 res = array(stats(deg))
                 benchs += [res]
+                plotbench()
+                plt.show()
                 #~ savebench()
        
 def plotbench():
