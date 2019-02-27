@@ -86,10 +86,10 @@ def gen(saveToFile = False, degree = 5, numcurves= 3):
 from cPickle import dump, load
 
         
-totaltrials = 100    
+totaltrials = 10    
 benchs = []
 #~ degrees = [5,7,9,12]
-degrees = [5, 9]
+degrees = [5]
 numphases = [2, 6]
 
 
