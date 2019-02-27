@@ -309,7 +309,7 @@ def computeTrajectory(pDef, saveToFile, filename = uuid.uuid4().hex.upper()[0:6]
                 #~ print "FAIl traj"
                 #~ raise ValueError
 ######################## solve a given problem ########################
-
+import math
 
 def ineq2Phases(phase0, phase1):
         return (concat(phase0[0],phase1[0]), concatvec(phase0[1],phase1[1]))
@@ -320,23 +320,44 @@ def def_find_min_t_out(degree, phase0, phase1, bezierPrev, i  = None, relax_vel 
         if relax_vel:
                 pDef.flag =  int(constraint_flag.INIT_POS)
         if last:
+                print "last"
                 pDef.flag =  pDef.flag | int(constraint_flag.END_POS)
         pDef.costFlag = derivative_flag.VELOCITY
         pDef.splits = array([genSplit(1)]).T   
         c = curve_constraints()
-        c.init_acc =  bezierPrev.derivate(bezierPrev.max(),2).copy()
-        c.init_vel =  bezierPrev.derivate(bezierPrev.max(),1).copy()
+        T_prev_phase = bezierPrev.max()
+        init_vel_calc = bezierPrev.degree * T_prev_phase * (bezierPrev.waypoints()[:,-1].flatten() - bezierPrev.waypoints()[:,-2].flatten())
+        dprev = bezierPrev.compute_derivate(1)
+        dprev2 = dprev.compute_derivate(1)
+        #~ try:
+        c.init_vel =  init_vel_calc.reshape((3,1))
+        #~ c.init_acc =  dprev2 (bezierPrev.max())
         pDef.curveConstraints = c
-        pDef.start = bezierPrev(bezierPrev.max()).copy()
+        
+        #~ print "bezierPrev max", bezierPrev.max()
+        #~ print "init_vel constraint", c.init_vel
+        pDef.start = bezierPrev.waypoints()[:,-1].reshape((3,1))
         pDef.degree = degree
         
         ph0 = (phase0[0][:],phase0[1][:])
         
         pDef.addInequality(ph0[0],ph0[1].reshape((-1,1)))
         ineq = generate_problem(pDef)
+        
+        if math.isnan(ineq.cost.b[0][0]):
+                print "pb!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ", ineq.cost.b
+                saveProblem(pDef)
+                ineq = generate_problem(pDef)
+                if math.isnan(ineq.cost.b[0][0]):
+                        print "pbkqjlkjqs", ineq.cost.b
+                        raise Exception('I know Python!') 
+                        
+        (matineq0, vecineq0) = (ineq.A, ineq.b.reshape((-1)))        
+        
         #add constraint on last waypoint
         lastinphase1 = zeros((phase1[1].shape[0],ineq.A.shape[1]))
-        lastinphase1[:,-3:] = phase1[0]                
+        lastinphase1[:,-3:] = phase1[0]     
+        (matineq0, vecineq0) = (concat(ineq.A,lastinphase1), concatvec(ineq.b.reshape((-1)),phase1[1]))           
         #add constraint on velocity waypoint
         # x+1 = 2 x_end - x-1
         # with P1 and p1 phase 1 matrix / vector
@@ -347,35 +368,38 @@ def def_find_min_t_out(degree, phase0, phase1, bezierPrev, i  = None, relax_vel 
         # x+1 = x_end + velConstraint(i) / n / T_next with T_next = 1
         # velConstraint(i) = (x_end - x-1) * n * T_prev
         # x+1 = x_end + (x_end - x-1) * T_prev 
-        # P1 (x_end + (x_end - x-1) * T_prev ) <= p1
-        #  T * (P1 (x_end - x-1) ) + P1 * x_end <= p1 
-        #  T * (P1 (x_end - x-1) ) <= p1 - P1 * x_end-1  TODO
+        # x+1 = x_end(1 + T_prev) + (- x-1) * T_prev 
+        # P1 (x_end(1 + T_prev) - x-1) <= p1
+        #  T_prev * (P1 (x_end - x-1) ) + P1 * x_end <= p1 
+        #  T_prev * (P1 (x_end - x-1) ) <= p1 - P1 * x_end-1  TODO
+        #~ velConstraint = 
+        #~ m1T_prev = bezierPrev.max()
+        Tm1 =1.; Tp1 = 1.
         veclcon = zeros((phase1[1].shape[0],ineq.A.shape[1]))  
-        veclcon[:,-6:-3] = -phase1[0]                
-        veclcon[:,-3:] = 2*phase1[0]               
-        
+        veclcon[:,-6:-3] = -phase1[0] * Tm1 / Tp1
+        veclcon[:,-3:] = (1+Tp1)*phase1[0]        
+        (matineq0, vecineq0) = (concat(matineq0,veclcon), concatvec(vecineq0,phase1[1])) 
         #add constraint on acceleration waypoint
         # with P1 and p1 phase 1 matrix / vector
         # P1 (x-2) <= p1            
-        acccon = zeros((phase1[1].shape[0],ineq.A.shape[1]))    
-        acccon[:,-9:-6] = phase1[0]              
-        (matineq0, vecineq0) = (concat(ineq.A,lastinphase1), concatvec(ineq.b.reshape((-1)),phase1[1]))
-        (matineq0, vecineq0) = (concat(matineq0,veclcon), concatvec(vecineq0,phase1[1]))
+        #~ acccon = zeros((phase1[1].shape[0],ineq.A.shape[1]))    
+        #~ acccon[:,-9:-6] = phase1[0]              
+        #~ (matineq0, vecineq0) = (concat(matineq0,veclcon), concatvec(vecineq0,phase1[1]))
         #~ (matineq0, vecineq0) = (concat(matineq0,acccon), concatvec(vecineq0,phase1[1]))
         
         (costA,costB) = (ineq.cost.A,ineq.cost.b)    
-        if relax_vel: #TODO
-                Avel = zeros((costA.shape[0],ineq.A.shape[1])) 
+                
+        #~ if relax_vel: #TODO
+                #~ Avel = zeros((costA.shape[0],ineq.A.shape[1])) 
                 #compute cost least square
-                bve = 2* pDef.start - c.init_vel
+                #~ bve = 2* pDef.start - c.init_vel
                 #~ veclcon = zeros((ineq.cost.A.shape))    
                 #~ print "shapes ", costB.shape
                 #~ costA[3:6,3:6] = costA[3:6,3:6] + 1000 * identity(3)   
                 #~ costB[3:6] = (1000. * 2)*(bve.reshape((-1,1))) 
                 #~ print "relax"
                      
-                pDef.flag =  int(constraint_flag.INIT_POS)
-        
+                #~ pDef.flag =  int(constraint_flag.INIT_POS)
         return pDef, (costA,costB),(matineq0, vecineq0) 
         
 def zeroBez():
@@ -388,11 +412,16 @@ def Bez(pos):
         
         
 def find_minimum_time_constrained_vel(bezierPrev, bez, phaseA, phaseB, Min = True):
-        #~ (matineq0, vecineq0) = (ones(1)*(-1),ones(1)*(-0.001)) # t > 0
-        (matineq0, vecineq0) = (ones(1)*(-1),zeros(1)) # t > 0
-        (matineq0, vecineq0) = (ones(1),ones(1)*2) # t <= 2
+        
+        bretime = bezier(bez.waypoints())
+        return 1., bretime
+        
+        (matineq0, vecineq0) = (ones(1)*(-1),ones(1)*(-0.1)) # t > 0
+        #~ (matineq0, vecineq0) = (zeros(1),zeros(1)) 
+        (matineq0, vecineq0) = (concatvec(matineq0, ones(1)), concatvec(vecineq0,ones(1)*2)) 
         bvel = 10*ones(3)
-        velConstraint = bezierPrev.derivate(bezierPrev.max(),1).flatten()
+        #~ velConstraint = bezierPrev.compute_derivate(1)(bezierPrev.max()).flatten()
+        velConstraint = bez.derivate(bez.min(),1).flatten()
         b = bez.compute_derivate(1)
         cost = ones(1)
         if not Min:
@@ -408,13 +437,20 @@ def find_minimum_time_constrained_vel(bezierPrev, bez, phaseA, phaseB, Min = Tru
         # make sure end vel and acceleration(t) is in the next polytope
         # TODO
         
-        deg = bezierPrev.degree
+        deg = bez.degree
         #add constraint on velocity waypoint
         # x+1 = x_0 + velConstraint(i-1) / n / T
         # P1 * x_0 * T + P1 / n * velConstraint <= p 1 * T
         # (P1 * x_0 -  p 1) * T  <= - P1 / n * velConstraint
         veclcon_t =  phaseA[0].dot(wps[:,0].flatten())  - phaseA[1] 
         veclcon_c = -phaseA[0].dot(velConstraint) / deg
+        #~ print "constrants t ", veclcon_t
+        #~ print "veclcon_c t ", veclcon_c
+        #~ print "deg ", deg
+        #~ print "velConstraint ", velConstraint
+        #~ print "velConstraint now ",  bez.derivate(bez.min(),1).flatten()
+        #~ print "wp0 ", wps[:,0].flatten()
+        #~ print "bezprev wps ",bezierPrev.compute_derivate(1).waypoints()
         (matineq0, vecineq0) = (concatvec(matineq0, veclcon_t), concatvec(vecineq0,veclcon_c)) 
         #add constraint on acceleration waypoint
         #TODO
@@ -426,31 +462,49 @@ def find_minimum_time_constrained_vel(bezierPrev, bez, phaseA, phaseB, Min = Tru
         # P2 (x_end + (x_end - x-1) * T_prev ) <= p2
         #  T * (P2 (x_end - x-1) ) + P2 * x_end <= p2 
         #  T * (P2 (x_end - x-1) ) <= p2 - P2 * x_end-1
+        #~ print "AA ", deg
         veclcon_t = phaseB[0].dot((wps[:,-1] - wps[:,-2]).flatten()) 
         #~ # comment
+        #~ print "A A", deg
         veclcon_c = phaseB[1] - phaseB[0].dot(wps[:,-2].flatten()) 
-        (matineq0, vecineq0) = (concatvec(matineq0, veclcon_t), concatvec(vecineq0,veclcon_c)) 
-        
+        #~ (matineq0, vecineq0) = (concatvec(matineq0, veclcon_t), concatvec(vecineq0,veclcon_c)) 
+        #~ print "A ", deg
         
         #polytope velocity constraints
         wps = b.waypoints()
+        
+        #~ print "B ", deg
         for i in range(b.nbWaypoints):
                 if i != 1:
                         A = wps[:,i].flatten()
                         (matineq0, vecineq0) = (concatvec(matineq0, -bvel), concatvec(vecineq0,A))   
                 # TODO ADD CONSTRAINT FOR 1
-                        
-        t = quadprog_solve_qp(ones((1,1))*0.00001,cost,matineq0.reshape((-1,1)),vecineq0).tolist()[0]
+        try:                
+                #~ print "C ", deg
+                t = quadprog_solve_qp(ones((1,1))*0.001,cost,matineq0.reshape((-1,1)),vecineq0).tolist()[0]
+                #~ print "D", deg
+        except:
+                print "dafuq !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", (matineq0.dot(1.)- vecineq0 < 0. ).all()
+                #~ print "prev max ", bezierPrev.max()
+                #~ print "Unexpected error:", sys.exc_info()[0]
         #rewrite velocity wp
         wps = bez.waypoints()
         #x(1)  = x(0) + v_final(i-1) * t_out(i)
         # x(1)  = x(0) + v_final(i-1) /n / t_out(i)
         #~ wps[:,1] = wps[:,-1] + (wps[:,-1] - wps[:,-2])
+        
+        #~ print "E", deg
         wps[:,1] = wps[:,0] + (velConstraint) / deg * t
+        #~ print "F", deg
         #~ print "t ", t
         #~ bretime = bezier(wps, t)
         bretime = bezier(wps)
+        
+        #~ print "G", deg
         #~ print "end wp ", bretime.waypoints()
+        #~ if abs(t - 1.)>0.1:
+        #~ print "t ", t
+                #~ t = 1.
         return t, bretime
         
         
@@ -460,8 +514,9 @@ def solveForPhase(degree, bezierPrev, phaseA, phaseB, filename="", saveToFile=Fa
         # now try for each constraint
         best_res = None
         best_cost = -10000;
-        best_time = -10000;
+        best_time = None;
         bretime = None
+        foundOne = False
         if Min:
                 best_cost = -best_cost
         
@@ -475,17 +530,21 @@ def solveForPhase(degree, bezierPrev, phaseA, phaseB, filename="", saveToFile=Fa
                         if (not last):
                                 eq = (lastinphase1, array([lineinec]))
                         (res,P, q, G, H) = qpineq(cost, ineq, eq,verbose = True)
+                        foundOne = True
                         b = evalBez(res[0],npDef)
-                        #~ c = approxLengthBez(b)
+                        c = approxLengthBez(b)
                         #~ c = res[1]
                         c, br = find_minimum_time_constrained_vel(bezierPrev, b, phaseA, phaseB, Min)
                         #~ if (Min and c < best_cost) or ((not Min) and c > best_cost):
                         if (c < abs(best_cost)):
                                 best_res = res[0]
                                 best_cost = c
+                                best_time = c
+                                #~ bretime = b
                                 bretime = br
-                                print "t", best_cost
-                except ValueError:
+                                #~ print "t", best_time
+                except ValueError, e:
+                        #~ print e
                         #~ if relax_vel:
                                 #~ print "not saved"
                         #~ else:
@@ -494,13 +553,17 @@ def solveForPhase(degree, bezierPrev, phaseA, phaseB, filename="", saveToFile=Fa
                         # plt.scatter([npDef.start.flatten()[0]],[npDef.start.flatten()[1]],color="r")      
                         pass
         if best_res is not None: 
-                plot(npDef, best_res, filename, saveToFile)
-                plot(npDef, bretime, filename, saveToFile, True)
+                #~ if best_time < 0.3:
+                        #~ plot(npDef, best_res, filename, saveToFile)
+                        #~ plot(npDef, bretime, filename, saveToFile, True)
+                        #~ plt.show()
                 tg = 0
         else:
                 print "no min time found"
-                raise ValueError        
-        return evalBez(best_res,npDef), best_time
+                print foundOne
+                raise ValueError  
+        #~ return evalBez(best_res,npDef), 1., evalBez(best_res,npDef)
+        return evalBez(best_res,npDef), best_time, bretime
         
 def approxLengthBez(b):
         res = 0.
@@ -531,8 +594,9 @@ def solveForPhases(pDef, inequalities_per_phase, filename="", saveToFile=False, 
         timesMin = [];
         for i in range(len(inequalities_per_phase)-1):
                 A = inequalities_per_phase[i]
-                bezierPrev, time = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=saveToFile, Min = Min)
+                bezierPrev, time, bezretime = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=saveToFile, Min = Min)
                 timesMin += [time]   
+                #~ bezierPrev = bezretime
         #~ if Min:
                 #~ timesMin += array([0.01])
         #~ else:

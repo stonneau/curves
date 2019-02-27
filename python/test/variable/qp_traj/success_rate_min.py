@@ -71,17 +71,14 @@ def gen(saveToFile = False, degree = 5, numcurves= 3):
                 try:
                 #~ if True:
                         timesMin,timesMax = findTimesToSplit(pDef, inequalities_per_phase)
-                        print "times max 1", timesMax
-                        totalMinDist = totalMinDist + 1
-                        pDef.degree +=3
-                        timesMin,timesMax = findTimesToSplit(pDef, inequalities_per_phase)
-                        print "times max 2", timesMax
+                        #~ print "times max 1", timesMax
                         totalMinDist = totalMinDist + 1
                         return
-                except ValueError:
-                        #~ print "total fail"
+                except ValueError, e:
+                        print " fail", e
                         pass
                 except:
+                        print "total fail"
                         totalScenarios = totalScenarios -1
 
 (P, q, G,h, res) = (None,None,None,None, None)
@@ -93,7 +90,7 @@ totaltrials = 100
 benchs = []
 #~ degrees = [5,7,9,12]
 degrees = [5, 9]
-numphases = [2, 4, 6]
+numphases = [2, 6]
 
 
 def savebench():
