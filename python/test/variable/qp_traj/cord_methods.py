@@ -428,7 +428,7 @@ def find_minimum_time_constrained_vel(bezierPrev, bez, phaseA, phaseB, Min = Tru
         #~ print "T_prev_phase ", T_prev_phase
         #~ print "tm1 ", Tm1
         velConstraint  = bezierPrev.degree * T_prev_phase * (bezierPrev.waypoints()[:,-1].flatten() - bezierPrev.waypoints()[:,-2].flatten())
-        velConstraint2 = bez.degree * Tm1 * (bez.waypoints()[:,1].flatten() - bez.waypoints()[:,0].flatten())
+        #~ velConstraint2 = bez.degree * Tm1 * (bez.waypoints()[:,1].flatten() - bez.waypoints()[:,0].flatten())
         
         #~ print "bezierPrev start ", bez.waypoints()[:,0].flatten()
         #~ print "bez start ", bez.waypoints()[:,0].flatten()
@@ -487,10 +487,15 @@ def find_minimum_time_constrained_vel(bezierPrev, bez, phaseA, phaseB, Min = Tru
         wps = b.waypoints()
         
         #~ print "B ", deg
+        # for all x, I x/ T <= bvel
+        # - bevel T <= -Ix
+        # for all x, I x/ T >= -bvel
+        # - bevel T <= Ix
         for i in range(b.nbWaypoints):
                 if i != 1:
                         A = wps[:,i].flatten()
-                        (matineq0, vecineq0) = (concatvec(matineq0, -bvel), concatvec(vecineq0,A))   
+                        (matineq0, vecineq0) = (concatvec(matineq0, -bvel), concatvec(vecineq0, A))   
+                        (matineq0, vecineq0) = (concatvec(matineq0, -bvel), concatvec(vecineq0,-A))   
                 # TODO ADD CONSTRAINT FOR 1
         try:                
                 #~ print "C ", deg
@@ -517,7 +522,7 @@ def find_minimum_time_constrained_vel(bezierPrev, bez, phaseA, phaseB, Min = Tru
         #~ print "G", deg
         #~ print "end wp ", bretime.waypoints()
         #~ if abs(t - 1.)>0.1:
-        print "t ", t
+        #~ print "t ", t
                 #~ t = 1.
         return t, bretime
         
@@ -567,10 +572,10 @@ def solveForPhase(degree, bezierPrev, phaseA, phaseB, filename="", saveToFile=Fa
                         # plt.scatter([npDef.start.flatten()[0]],[npDef.start.flatten()[1]],color="r")      
                         pass
         if best_res is not None: 
-                if best_time < 0.3:
-                        plot(npDef, best_res, filename, saveToFile)
-                        plot(npDef, bretime, filename, saveToFile, True)
-                        plt.show()
+                #~ if best_time < 0.3:
+                        #~ plot(npDef, best_res, filename, saveToFile)
+                        #~ plot(npDef, bretime, filename, saveToFile, True)
+                        #~ plt.show()
                 tg = 0
         else:
                 print "no min time found"
@@ -606,12 +611,13 @@ def approxLengthBez(b):
 def solveForPhases(pDef, inequalities_per_phase, filename="", saveToFile=False, Min = True): 
         bezierPrev = Bez(pDef.start.reshape((-1)))
         timesMin = [];
+        #~ plt.close()
         for i in range(len(inequalities_per_phase)-1):
-                print "phase ", i
+                #~ print "phase ", i
                 A = inequalities_per_phase[i]
                 bezierPrev, time, bezretime = solveForPhase(pDef.degree, bezierPrev, inequalities_per_phase[i], inequalities_per_phase[i+1], filename=filename, saveToFile=saveToFile, Min = Min)
                 timesMin += [time]   
-                #~ bezierPrev = bezretime
+                bezierPrev = bezretime
         #~ if Min:
                 #~ timesMin += array([0.01])
         #~ else:
@@ -619,6 +625,7 @@ def solveForPhases(pDef, inequalities_per_phase, filename="", saveToFile=False, 
         #~ timesMin += [norm(bezierPrev(bezierPrev.max()).flatten() - bezierPrev(bezierPrev.min()).flatten())]
         #~ timesMin += [approxLengthBez(bezierPrev)]
         timesMin += [time]
+        #~ plt.show()
         return array(timesMin).reshape((-1)).tolist()
         
 def findTimesToSplit(pDef, inequalities_per_phase, filename="", saveToFile=False):
