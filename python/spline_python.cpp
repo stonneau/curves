@@ -81,10 +81,10 @@ BOOST_PYTHON_MODULE(hpp_spline)
 
 
     /** BEGIN variable points bezier curve**/
-    class_<MatrixVector>
-        ("MatrixVector", no_init)
-        .def_readonly("A", &MatrixVector::A)
-        .def_readonly("b", &MatrixVector::b)
+    class_<matrix_pair>
+        ("matrix_pair", no_init)
+        .def_readonly("A", &matrix_pair::A)
+        .def_readonly("b", &matrix_pair::b)
         ;
 
     class_<LinearBezierVector>
@@ -107,13 +107,6 @@ BOOST_PYTHON_MODULE(hpp_spline)
             .def("waypoints", &wayPointsToLists, return_value_policy<manage_new_object>())
             .def_readonly("degree", &bezier_linear_variable_t::degree_)
             .def_readonly("nbWaypoints", &bezier_linear_variable_t::size_)
-        ;
-
-
-    class_<LinearBezierVector>
-        ("bezierVarVector", no_init)
-        .def_readonly("size", &LinearBezierVector::size)
-        .def("at", &LinearBezierVector::at, return_value_policy<manage_new_object>())
         ;
 
     class_<problem_definition_t>
@@ -147,7 +140,7 @@ BOOST_PYTHON_MODULE(hpp_spline)
         ;
 
 
-    def("setupControlPoints", &setup_control_points_3_t);
+    def("setup_control_points", &setup_control_points_3_t);
     def("generate_problem", &generate_problem_3_t);
 
     class_<problem_data_t>

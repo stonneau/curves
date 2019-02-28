@@ -30,7 +30,7 @@ quadratic_variable<Numeric> compute_derivative_cost_internal
     bezier_t acc = pData.bezier->compute_derivate(num_derivate);
     const t_point_t& wps = acc.waypoints();
     return bezier_product<Point, Dim, Numeric, cit_point_t>
-            (pData,wps.begin(),wps.end(),wps.begin(),wps.end());
+            (wps.begin(),wps.end(),wps.begin(),wps.end());
 }
 
 template<typename Point, int Dim, typename Numeric>

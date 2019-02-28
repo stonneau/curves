@@ -33,8 +33,8 @@ struct problem_data
     typedef bezier_curve<Numeric, Numeric, Dim, true, linear_variable<Dim, Numeric> > bezier_t;
 
     std::vector<var_t> variables_; // includes constant variables
-    std::size_t numVariables; // total number of variable (* DIM for total size)
-    std::size_t numControlPoints; // total number of variable (* DIM for total size)
+    std::size_t numVariables; // total number of variable (/ DIM for total size)
+    std::size_t numControlPoints; // total number of control Points (variables + waypoints) / DIM )
     std::size_t startVariableIndex; //before that index, variables are constant
     std::size_t numStateConstraints;
     bezier_t* bezier;
@@ -136,7 +136,7 @@ problem_data<Point, Dim, Numeric> setup_control_points(const problem_definition<
                 ++numConstants;
                 ++i;
                 if(flag & INIT_JERK){
-                  point_t jerk = constraints.init_jerk*pDef.totalTime*pDef.totalTime*pDef.totalTime/(degree*(degree-1)*(degree-2))
+                  point_t jerk = constraints.init_jerk*pDef.totalTime*pDef.totalTime*pDef.totalTime/(num_t)(degree*(degree-1)*(degree-2))
                   + 3*acc -3*vel +pDef.start;
                   variables_.push_back(var_t(jerk));
                   ++numConstants;
@@ -161,7 +161,7 @@ problem_data<Point, Dim, Numeric> setup_control_points(const problem_definition<
                         / (pDef.totalTime) * (pDef.totalTime)
                         + 2* vel - pDef.end;
                 if(flag & END_JERK){
-                  point_t jerk = -constraints.end_jerk*pDef.totalTime*pDef.totalTime*pDef.totalTime/(degree*(degree-1)*(degree-2))
+                  point_t jerk = -constraints.end_jerk*pDef.totalTime*pDef.totalTime*pDef.totalTime/(num_t)(degree*(degree-1)*(degree-2))
                   + 3*acc -3*vel + pDef.end;
                   variables_.push_back(var_t(jerk));
                   ++numConstants;
@@ -219,18 +219,10 @@ long compute_num_ineq_control_points
     typedef problem_definition<Point, Dim, Numeric> problem_definition_t;
     long rows(0);
     // rows depends on each constraint size, and the number of waypoints
-    for (typename problem_definition_t::CIT_vectorx_t cit = pDef.inequalityVectors_.begin();
+    for (typename problem_definition_t::CIT_vector_x_t cit = pDef.inequalityVectors_.begin();
          cit != pDef.inequalityVectors_.end(); ++cit)
         rows += cit->rows() * pData.numControlPoints;
     return rows;
-}
-
-template<typename Point, int Dim, typename Numeric>
-long compute_num_ineq_state_constraints
-(const problem_definition<Point, Dim, Numeric>& pDef, const problem_data<Point, Dim, Numeric> & pData)
-{
-    //TODO
-    return 0;
 }
 
 template<typename Point, int Dim, typename Numeric>
@@ -266,13 +258,7 @@ void initInequalityMatrix
 {
     typedef problem_definition<Point, Dim, Numeric> problem_definition_t;
     typedef typename problem_definition_t::matrix_x_t matrix_x_t;
-    typedef typename problem_definition_t::vectorx_t vectorx_t;
-    typedef Eigen::Matrix<Numeric, Dim, Eigen::Dynamic> matrix_dimx_t;
-    typedef Eigen::Matrix<Numeric, Dim, 1> vector_dim_t;
-    typedef std::vector<matrix_dimx_t, Eigen::aligned_allocator<matrix_dimx_t> > T_matrix_dimx_t;
-    typedef std::vector<matrix_dimx_t, Eigen::aligned_allocator<vector_dim_t> > T_vector_dim_t;
-    typedef typename T_matrix_dimx_t::const_iterator CIT_matrix_dimx_t;
-    typedef typename T_vector_dim_t::const_iterator CIT_vector_dim_t;
+    typedef typename problem_definition_t::vector_x_t vector_x_t;
     typedef bezier_curve<Numeric, Numeric, Dim, true, linear_variable<Dim, Numeric> >  bezier_t;
     typedef std::vector<bezier_t> T_bezier_t;
     typedef typename T_bezier_t::const_iterator CIT_bezier_t;
@@ -281,9 +267,8 @@ void initInequalityMatrix
 
     long cols =  pData.numVariables * Dim;
     long rows = compute_num_ineq_control_points<Point, Dim, Numeric>(pDef, pData);
-    //rows+= compute_num_ineq_state_constraints<Point, Dim, Numeric>(pDef, pData); // TODO
     prob.ineqMatrix = matrix_x_t::Zero(rows,cols);
-    prob.ineqVector = vectorx_t::Zero(rows);
+    prob.ineqVector = vector_x_t::Zero(rows);
 
     // compute sub-bezier curves
     T_bezier_t beziers = split<Point, Dim, Numeric>(pDef,pData);
@@ -293,13 +278,12 @@ void initInequalityMatrix
 
     long currentRowIdx = 0;
     typename problem_definition_t::CIT_matrix_dim_t cmit = pDef.inequalityMatrices_.begin();
-    typename problem_definition_t::CIT_vectorx_t cvit = pDef.inequalityVectors_.begin();
+    typename problem_definition_t::CIT_vector_x_t cvit = pDef.inequalityVectors_.begin();
     // for each bezier split ..
     for (CIT_bezier_t bit = beziers.begin();
          bit != beziers.end(); ++bit, ++cvit, ++cmit)
     {
         //compute vector of linear expressions of each control point
-
         const t_point& wps = bit->waypoints();
         // each control has a linear expression depending on all variables
         for(cit_point cit = wps.begin(); cit != wps.end(); ++cit)
@@ -314,8 +298,7 @@ void initInequalityMatrix
 }
 
 template<typename Point, int Dim, typename Numeric, typename In >
-quadratic_variable<Numeric> bezier_product(
-        const problem_data<Point, Dim, Numeric>& pData, In PointsBegin1, In PointsEnd1, In PointsBegin2, In PointsEnd2)
+quadratic_variable<Numeric> bezier_product(In PointsBegin1, In PointsEnd1, In PointsBegin2, In PointsEnd2)
 {
     typedef Eigen::Matrix<Numeric, Eigen::Dynamic, 1> vector_x_t;
     unsigned int nPoints1 = (unsigned int)(std::distance(PointsBegin1,PointsEnd1)),

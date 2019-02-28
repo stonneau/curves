@@ -41,7 +41,7 @@ bezier_linear_variable_t* wrapBezierLinearConstructorBounds
 typedef std::pair<Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic>,
                   Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> > linear_points_t;
 
-struct MatrixVector
+struct matrix_pair
 {
     linear_points_t res;
     Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> A() {return res.first;}
@@ -57,7 +57,7 @@ real cost_t_constant(const quadratic_variable_t & p);
 
 problem_t generate_problem_3_t(const problem_definition_t &pDef);
 
-MatrixVector* wayPointsToLists(const bezier_linear_variable_t& self);
+matrix_pair* wayPointsToLists(const bezier_linear_variable_t& self);
 
 struct LinearBezierVector
 {
@@ -88,7 +88,7 @@ Eigen::Vector3d get_end(const problem_definition_t* pDef);
 std::size_t get_degree(const problem_definition_t* pDef);
 double get_total_time(const problem_definition_t* pDef);
 Eigen::VectorXd get_split_times(const problem_definition_t* pDef);
-MatrixVector* get_ineq_at(const problem_definition_t* pDef, const std::size_t idx);
+matrix_pair* get_ineq_at(const problem_definition_t* pDef, const std::size_t idx);
 bool del_ineq_at(problem_definition_t* pDef, const std::size_t idx);
 bool add_ineq_at(problem_definition_t* pDef, const Eigen::MatrixXd ineq, const Eigen::VectorXd vec);
 } //namespace optimization

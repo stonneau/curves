@@ -119,11 +119,11 @@ double get_total_time(const problem_definition_t* pDef)
     return pDef->totalTime;
 }
 
-MatrixVector* get_ineq_at(const problem_definition_t* pDef, const std::size_t idx)
+matrix_pair *get_ineq_at(const problem_definition_t* pDef, const std::size_t idx)
 {
     if (idx > pDef->inequalityMatrices_.size() - 1)
         throw std::runtime_error("required id is beyond number of inequality matrices");
-    MatrixVector* res = new MatrixVector();
+    matrix_pair* res = new matrix_pair();
     res->res = std::make_pair(pDef->inequalityMatrices_[idx], pDef->inequalityVectors_[idx]);
     return res;
 }
@@ -193,7 +193,7 @@ bezier_linear_variable_t* wrapBezierLinearConstructorBounds(const point_list_t& 
 }
 
 
-MatrixVector*
+matrix_pair*
         wayPointsToLists(const bezier_linear_variable_t& self)
 {
     typedef typename bezier_linear_variable_t::t_point_t t_point;
@@ -210,7 +210,7 @@ MatrixVector*
         matrices.block(0,i*3,dim,3) = cit->B().transpose();
         vectors.block<3,1>(0,i)   =  cit->c();
     }
-    MatrixVector* res (new MatrixVector);
+    matrix_pair* res (new matrix_pair);
     res->res = std::make_pair(matrices, vectors);
     return res;
 }

@@ -13,6 +13,7 @@
 
 #include <hpp/spline/bezier_curve.h>
 #include <hpp/spline/linear_variable.h>
+#include <hpp/spline/quadratic_variable.h>
 #include <hpp/spline/curve_constraint.h>
 
 #include <Eigen/StdVector>
@@ -60,13 +61,13 @@ struct problem_definition
     typedef Point  point_t;
     typedef Numeric  num_t;
     typedef curve_constraints<point_t> curve_constraints_t;
-    typedef Eigen::Matrix< num_t , Eigen::Dynamic , 1> vectorx_t;
+    typedef Eigen::Matrix< num_t , Eigen::Dynamic , 1> vector_x_t;
     typedef Eigen::Matrix< num_t , Eigen::Dynamic , Eigen::Dynamic> matrix_x_t;
     typedef Eigen::Matrix< num_t , Eigen::Dynamic , Dim> matrix_dim_t;
     typedef std::vector<matrix_dim_t, Eigen::aligned_allocator<matrix_dim_t> > T_matrix_dim_t;
-    typedef std::vector<vectorx_t, Eigen::aligned_allocator<vectorx_t> > T_vectorx_t;
+    typedef std::vector<vector_x_t, Eigen::aligned_allocator<vector_x_t> > T_vector_x_t;
     typedef typename T_matrix_dim_t::const_iterator CIT_matrix_dim_t;
-    typedef typename T_vectorx_t::const_iterator CIT_vectorx_t;
+    typedef typename T_vector_x_t::const_iterator CIT_vector_x_t;
 
     problem_definition()
         : flag(NONE)
@@ -76,7 +77,7 @@ struct problem_definition
         , curveConstraints()
         , degree(5)
         , totalTime(1.)
-        , splitTimes_(vectorx_t::Zero(0)) {}
+        , splitTimes_(vector_x_t::Zero(0)) {}
 
 
     constraint_flag flag;
@@ -86,9 +87,9 @@ struct problem_definition
     curve_constraints_t curveConstraints;
     std::size_t degree;
     num_t totalTime;
-    vectorx_t splitTimes_;
+    vector_x_t splitTimes_;
     T_matrix_dim_t inequalityMatrices_; // must be of size (splitTimes_ + 1)
-    T_vectorx_t    inequalityVectors_;  // must be of size (splitTimes_ + 1)
+    T_vector_x_t    inequalityVectors_;  // must be of size (splitTimes_ + 1)
 };
 
 } // namespace optimization

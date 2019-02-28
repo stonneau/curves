@@ -66,7 +66,7 @@ def getLineFromSegment(line):
         return (coeff, array([rhs]))
    
 def genConstraintsPerPhase(pDef, numphases):        
-        pData = setupControlPoints(pDef)
+        pData = setup_control_points(pDef)
         vB = varBezier()
         bezVar = vB.fromBezier(pData.bezier())
         line_current = [array([1.,1.,0.]), array([0.,1.,0.]),array([0.,1.,0.])]
@@ -185,7 +185,7 @@ def genProblemDef(numvars = 3, numcurves= 4):
 
 def __getbezVar(pDef): #for plotting only
         vB = varBezier()
-        pData = setupControlPoints(pDef)
+        pData = setup_control_points(pDef)
         return vB.fromBezier(pData.bezier())
 
 import time
