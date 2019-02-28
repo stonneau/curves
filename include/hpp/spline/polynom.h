@@ -39,7 +39,7 @@ struct polynom : public curve_abc<Time, Numeric, Dim, Safe, Point>
     typedef Time 	time_t;
     typedef Numeric	num_t;
     typedef curve_abc<Time, Numeric, Dim, Safe, Point> curve_abc_t;
-    typedef Eigen::Matrix<double, Dim, Eigen::Dynamic> coeff_t;
+    typedef Eigen::Matrix<num_t, Dim, Eigen::Dynamic> coeff_t;
     typedef Eigen::Ref<coeff_t> coeff_t_ref;
 
 /* Constructors - destructors */
