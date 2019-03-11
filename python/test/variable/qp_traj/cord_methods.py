@@ -5,7 +5,8 @@ from numpy.linalg import norm
 __EPS = 1e-6
 
 import numpy as np
-np.set_printoptions(precision=3, suppress=True, threshold=np.nan)
+import sys
+np.set_printoptions(precision=3, suppress=True, threshold=sys.maxsize)
 from varBezier import varBezier
 from qp_cord import *
 from plot_cord import *
@@ -69,7 +70,7 @@ def genConstraintsPerPhase(pDef, numphases):
         pData = setup_control_points(pDef)
         vB = varBezier()
         bezVar = vB.fromBezier(pData.bezier())
-        line_current = [array([1.,1.,0.]), array([0.,1.,0.]),array([0.,1.,0.])]
+        line_current = [array([10.,1.,0.]), array([0.,1.,0.]),array([0.,1.,0.])]
         dimExtra = 0
         ineqs = []
         for i in range(numphases):
@@ -77,13 +78,17 @@ def genConstraintsPerPhase(pDef, numphases):
                 if i == 0:
                         #~ init_points = [bezVar.waypoints()[1][:3,0][:2]]
                         init_points = [pDef.start.flatten()[:2]]; 
-                        init_points = init_points + [init_points[-1] + np.array([0.1,0.1])]
-                        init_points = init_points + [init_points[-1] + np.array([-0.1,0.1])]
-                        init_points = init_points + [init_points[-1] + np.array([-0.1,-0.1])]
-                        init_points = init_points + [init_points[-1] + np.array([0.1,0.1])]
+                        init_points = init_points + [init_points[0] + np.array([0.1,0.1])]
+                        init_points = init_points + [init_points[0] + np.array([-0.1,0.1])]
+                        init_points = init_points + [init_points[0] + np.array([-0.1,-0.1])]
+                        init_points = init_points + [init_points[0] + np.array([0.1,0.1])]
                 if i == numphases-1:
-                        init_points = [bezVar.waypoints()[1][-3:,-1][:2]]
-                lines, ptList = genFromLine(line_current, 5, [[0,5],[0,5]],init_points)
+                        init_points = [pDef.end.flatten()[:2]]
+                        init_points = init_points + [init_points[0] + np.array([0.1,0.1])]
+                        init_points = init_points + [init_points[0] + np.array([-0.1,0.1])]
+                        init_points = init_points + [init_points[0] + np.array([-0.1,-0.1])]
+                        init_points = init_points + [init_points[0] + np.array([0.1,0.1])]
+                lines, ptList = genFromLine(line_current, 5, [[0,50],[0,50]],init_points)
                 matineq0 = None; vecineq0 = None
                 for line in lines:
                         (mat,vec) = getLineFromSegment(line)
@@ -92,7 +97,8 @@ def genConstraintsPerPhase(pDef, numphases):
                 ineqs += [(matineq0[:], vecineq0[:])]
                 pDef.addInequality(matineq0,vecineq0.reshape((-1,1)))
                 line_current = getRightMostLine(ptList)
-                #~ plotPoly  (lines, colors[i])
+                #~ if i +1 < numphases:
+                plotPoly  (lines, colors[i])
         return ineqs
    
 def genConstraintsPerPhaseNew(pDef, numphases):        
@@ -167,7 +173,7 @@ colors2=[colors[len(colors)-1-i] for i in range(len(colors))]
 
 def genProblemDef(numvars = 3, numcurves= 4):
         valDep = array([[np.random.uniform(0., 1.), np.random.uniform(0.,5.), 0. ]]).T
-        valEnd = array([[np.random.uniform(5., 10.), np.random.uniform(0.,5.), 0.]]).T
+        valEnd = array([[np.random.uniform(50., 100.), np.random.uniform(0.,5.), 0.]]).T
         #~ valEnd = array([[1.,1.,0.]]).T
         #~ valEnd = array([[2.,2.,2.]]).T
         pDef = problemDefinition()

@@ -59,6 +59,9 @@ def one_step(Pi, Pip1, V, zero_start = False, zero_end = False, x_start = None):
     prob = cp.Problem(obj, constraints)
     prob.solve()
     return prob, x, ti[0]
+    
+    
+
 
 from hpp_spline import bezier
 
@@ -79,7 +82,7 @@ if __name__ == '__main__':
         v = ones(4); #v[:-3] = -v[3:]
         V = zeros((4,2)); 
         V[:2,:] = identity(2); 
-        V[:2,:] =-identity(2); 
+        V[2:,:] =-identity(2); 
         return (V, v)
         
     def one():

@@ -65,10 +65,27 @@ def gen(saveToFile = False):
                 print "failed"
                 #~ plt.close()
 
-for i in range(1):
+for i in range(0):
         gen(False)
         #~ if res[0] != None:
                 #~ break
+
+wps = zeros((3,6))
+deg = wps.shape[1]-1
+wps[:, 0] = array([0,0.,0.]) 
+wps[:,-1] = array([3,1,0.]) 
+
+wps[:, 1] = wps[:, 0] + array([-0.5,0.5,0.])  /deg
+wps[:,-2] = wps[:,-1] -  array([-0.,-1.,0.])  /  deg
+
+wps[:, 2] = 2* wps[:, 1] - wps[:,  0] + array([1,1,0.])  /(deg * (deg-1))
+wps[:,-3] = 2* wps[:,-2] - wps[:, -1] + array([0.,-1,0.])  /(deg * (deg-1))
+
+print wps
+
+b = bezier(wps)
+plotBezier(b, "r", linewidth =2)
+plt.show()
 
 def cost(P, q, G,h, x):
         print (x.T.dot(P).dot(x) / 2. + q.dot(x))
