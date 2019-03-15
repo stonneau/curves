@@ -165,20 +165,21 @@ def saveProblem(pDef):
 ######################## solve a given problem ########################
 
 
-colors=['b', 'g', 'r', 'c', 'm', 'y', 'k']
+colors=['b', 'g', 'r', 'c', 'm', 'y', 'k','b', 'g', 'r', 'c', 'm', 'y', 'k']
 labels=['Distance', 'Velocity', 'Acceleration', 'Jerk']
 colors2=[colors[len(colors)-1-i] for i in range(len(colors))]
 
 
 
 def genProblemDef(numvars = 3, numcurves= 4):
-        valDep = array([[np.random.uniform(0., 1.), np.random.uniform(0.,5.), 0. ]]).T
-        valEnd = array([[np.random.uniform(50., 100.), np.random.uniform(0.,5.), 0.]]).T
+        valDep = array([[np.random.uniform(0., 10.), np.random.uniform(0.,50.), 0. ]]).T
+        valEnd = array([[np.random.uniform(20., 50.), np.random.uniform(0.,50.), 0.]]).T
         #~ valEnd = array([[1.,1.,0.]]).T
         #~ valEnd = array([[2.,2.,2.]]).T
         pDef = problemDefinition()
         #~ pDef.flag =  int(constraint_flag.INIT_POS) | int(constraint_flag.INIT_VEL)
-        pDef.flag =  int(constraint_flag.INIT_POS) | int(constraint_flag.INIT_VEL) | int(constraint_flag.END_POS)
+        pDef.flag =  int(constraint_flag.INIT_POS) | int(constraint_flag.END_POS)
+        #~ pDef.flag =  int(constraint_flag.INIT_POS) | int(constraint_flag.INIT_VEL) | int(constraint_flag.END_POS)
         #~ pDef.flag =  int(constraint_flag.INIT_POS) | int(constraint_flag.INIT_VEL) | int(constraint_flag.INIT_ACC)
         #~ pDef.flag =  int(constraint_flag.INIT_POS) | int(constraint_flag.INIT_VEL) | int(constraint_flag.INIT_ACC)
         pDef.start = valDep
@@ -257,6 +258,7 @@ def plot(pDef, res, filename, saveToFile, resIsBezier = False):
                 plotControlPoints(final, "r",linewidth =1)
         else:
                 for i, bez in enumerate(subs):
+                        print "heo"
                         #~ color = colors[i]
                         test = bez.toBezier3(res[:])
                         if( i == 0):
@@ -285,7 +287,7 @@ def plot(pDef, res, filename, saveToFile, resIsBezier = False):
         return final
         
 def oneVelIneq(pDef, ineq):
-        bvel = 10.*ones(3)
+        bvel = ones(3)
         bezVar = __getbezVar(pDef)
         b = bezVar.bezier
         #derivatesb

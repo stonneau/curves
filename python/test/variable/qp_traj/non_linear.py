@@ -204,7 +204,7 @@ def init_guess(pDef,Pis,nphases, plot=True):
 if __name__ == '__main__':
     
         
-    def one(nphases=2):
+    def one(nphases=3):
         plt.close()
         pDef, Pis = genProblemDef(6,nphases)
         x_start = pDef.start.reshape((-1,))
@@ -239,15 +239,11 @@ if __name__ == '__main__':
                bounds=bounds(nphases)
                )
                
-       
-        wp1 = array([array(cj(res.x,j, 0).tolist() + [0.]) for j in range(6)]).T
-        wp2 = array([array(cj(res.x,j, 1).tolist() + [0.]) for j in range(6)]).T
-        b1 = bezier(wp1)
-        b2 = bezier(wp2)
-        plotBezier(b1, "r", label = None, linewidth = 2.0)
-        plotControlPoints(b1, "r",linewidth=2)
-        plotBezier(b2, "b", label = None, linewidth = 2.0)
-        plotControlPoints(b2, "b",linewidth=2)
+        for i in range(nphases)
+            wp1 = array([array(cj(res.x,j, i).tolist() + [0.]) for j in range(6)]).T
+            b1 = bezier(wp1)
+            plotBezier(b1, colors[i], label = None, linewidth = 2.0)
+            plotControlPoints(b1, colors[i],linewidth=2)
         plt.show()
         return res
         
