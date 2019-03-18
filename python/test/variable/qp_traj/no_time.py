@@ -13,9 +13,11 @@ rdim = 2
 
 #find the minimum time sequence of straight lines connecting from start to end position along union of convex sets
 
-def solve_straight_lines(Pis, V, x_start = None, x_end = None): #TODO: add V and A    
+def solve_straight_lines(Pis, V, x_start = None, x_end = None, ccost = None, tis = None): #TODO: add V and A    
     num_phases = len(Pis)
-    num_vars = nvars * num_phases
+    num_vars = nvars * num_phases    
+    if tis is None:
+        tis = ones(len(Pis))
     x   = [cp.Variable(rdim) for i in range(num_vars)] 
     
     constraints = []
@@ -41,8 +43,8 @@ def solve_straight_lines(Pis, V, x_start = None, x_end = None): #TODO: add V and
         idx = j*nvars
         constraints = constraints + [
         x[idx]   ==  x[idx-1], #just positions because velocities at 0
-        x[idx+1] -   x[idx]    ==   x[idx] -   x[idx-2],  #just positions because velocities at 0
-        x[idx+3] - 2*x[idx+1]  == x[idx-3] - 2*x[idx-2]  #just positions because velocities at 0
+        (x[idx+1] -   x[idx]) * tis[j-1]    ==   (x[idx] -   x[idx-2])  * tis[j] ,#  v/n = (p1 - p0) / to = (p0-p_n_1) / t1
+        (x[idx+3] - 2*x[idx+1] + x[idx]) * tis[j-1] * tis[j-1]   == (x[idx-3] - 2*x[idx-2] + x[idx]) * tis[j] * tis[j] #just positions because velocities at 0
         ]
             
     if x_start is not None:
@@ -53,7 +55,11 @@ def solve_straight_lines(Pis, V, x_start = None, x_end = None): #TODO: add V and
     #~ cost = [cp.quad_form(x[idx],identity(x[idx].shape[0])) for idx in range(1,2)]
     #~ cost = sum([cp.quad_form(x[idx],identity(x[idx].shape[0])) - cp.quad_form(x[idx+1],identity(x[idx].shape[0])) for idx in range(len(x)-1)])
     
-    obj = cp.Minimize(x[2][1])
+    v = [x[idx+1] - x[idx] for idx in range(len(x)-1)]
+    obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in v]))    
+    if ccost is not None:
+        obj = cp.Minimize(sum ([cp.quad_form(xi, ccost[k%nvars][0]) + ccost[k%nvars][1].T * xi for k, xi in enumerate(x)]))
+        
     prob = cp.Problem(obj, constraints)
     prob.solve(solver="ECOS",verbose=True)
     return prob, tovals(x)
@@ -95,7 +101,13 @@ def min_time(xs,V):
     prob.solve(solver="ECOS",verbose=True)
     return t.value[0]
     
+def tailored_cost(c, nvars):
+    A = c.A; b = c.b
+    return [(A[i:i+2,i:i+2],b[i:i+2]) for i in range(0,nvars*3,3)]
     
+        #~ pData = generate_problem(pDef)
+        #~ costPerPhase = pData.cost
+        
 
 from hpp_spline import bezier
 
@@ -120,12 +132,17 @@ if __name__ == '__main__':
         
     def one(nphase=2):
         plt.close()
-        pDef, inequalities_per_phase = genProblemDef(6,nphase)
+        pDef, inequalities_per_phase = genProblemDef(nvars,nphase)
         V = boundIneq()
         x_start = pDef.start.reshape((-1,))
         x_end = pDef.end.reshape((-1,))
+        pDef.splits = problemDefinition().splits
+        pDef.flag = NONE
+        pDef.costFlag = JERK
+        pData = generate_problem(pDef)
+        costPerPhase = pData.cost
 
-        prob, xis = solve_straight_lines(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end)
+        prob, xis = solve_straight_lines(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = tailored_cost(costPerPhase, nvars))
         
         #~ print "times", tis
         for i in range(nphase):
@@ -134,7 +151,20 @@ if __name__ == '__main__':
             print "init vel", b.compute_derivate(1)(0.)
             print "end vel", b.compute_derivate(1)(b.max())
             plotBezier(b, colors[i], label = None, linewidth = 3.0)
-            plotControlPoints(b, colors[i],linewidth=2)
+            #~ plotControlPoints(b, colors[i],linewidth=2)
+            
+        
+
+        prob, xis = solve_straight_lines(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = None)
+        
+        #~ print "times", tis
+        for i in range(nphase):
+            #~ ti = abs(tis[i][0])
+            b = bezierFromVal(xis[i*nvars:i*nvars+nvars], 1.)
+            print "init vel", b.compute_derivate(1)(0.)
+            print "end vel", b.compute_derivate(1)(b.max())
+            plotBezier(b, colors[i+4], label = None, linewidth = 3.0)
+            #~ plotControlPoints(b, colors[i],linewidth=2)
                 
         plt.show()
         return b

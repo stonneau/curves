@@ -83,7 +83,7 @@ def genConstraintsPerPhase(pDef, numphases):
                         init_points = init_points + [init_points[0] + np.array([-0.1,-0.1])]
                         init_points = init_points + [init_points[0] + np.array([0.1,0.1])]
                 if i == numphases-1:
-                        init_points = [pDef.end.flatten()[:2]]
+                        init_points = init_points + [pDef.end.flatten()[:2]]
                         init_points = init_points + [init_points[0] + np.array([0.1,0.1])]
                         init_points = init_points + [init_points[0] + np.array([-0.1,0.1])]
                         init_points = init_points + [init_points[0] + np.array([-0.1,-0.1])]
