@@ -34,15 +34,23 @@ def mip1(Pis,num_phases,x_start, x_end):
     vels = integrate(zeros(rdim), accs)
     pos  = integrate(x_start[:rdim], vels)
     select = [[cp.Variable(1, boolean=True) for _ in range(len(Pis))] for _ in range(num_phases)]
+    #~ tswitch = [cp.Variable(1, integer=True) for _ in range(len(Pis))] 
+    #~ select = [cp.Variable(1, integer=True) for _ in range(num_phases)] 
     #~ constraints = [P * x <= p for x in pos]
     M = 5000
     constraints = [pos[-1] == x_end[:rdim]] 
+    #~ constraints = constraints + [ts >=0 for ts in tswitch] + [ts<= num_phases for ts in tswitch]
+    #~ constraints = constraints + [ts >=1 for ts in select] + [ts<= num_phases for ts in select]
+    #~ constraints = constraints + [ts[i+1] >= , ts<= num_phases for ts in tswitch]
     constraints = constraints + [sum(select[j]) == 1 for j in range(num_phases)]
-    for j in range(num_phases):
+    for j in range(num_phases-1):
         constraints = constraints + [Pis[i][0][:,:rdim] * x -Pis[i][1] <= M*(1-select[j][i]) for x in pos for i in range(len(Pis))]
-    #~ constraints = constraints + [V * x <= v*20 for x in jerks]
-    #~ constraints = constraints + [V * x <= v*20 for x in accs]
-    constraints = constraints + [V * x <= v*30 for x in vels]
+        #~ constraints = constraints + [Pis[i][0][:,:rdim] * x -Pis[i][1] <= M*((tswitch[i] <= j) and (tswitch[i+1] >= j)) for x in pos for i in range(len(Pis))]
+        #~ constraints = constraints + [Pis[i][0][:,:rdim] * x -Pis[i][1] <= M*(cp.quad_form(num_phases - select[j],identity(1))) for x in pos for i in range(len(Pis))]
+    #~ constraints = constraints + [Pis[i][0][:,:rdim] * x -Pis[i][1] <= M*((tswitch[i] <= j) * (tswitch[i+1] >= j)) for x in pos for i in range(len(Pis))]
+    constraints = constraints + [V * x <= v*20 for x in jerks]
+    constraints = constraints + [V * x <= v*20 for x in accs]
+    #~ constraints = constraints + [V * x <= v*30 for x in vels]
     #~ obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in jerks]))
     obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in vels]))
     prob = cp.Problem(obj, constraints)
@@ -66,9 +74,9 @@ if __name__ == '__main__':
         yp = [x_start[1]] + [e.value[1] for e in res]
         plt.scatter(xp,yp,color = "k")
         
-        from no_time import solve_straight_lines, bezierFromVal
+        from no_time import no_time, bezierFromVal
         
-        prob, xis = solve_straight_lines(Pis[:], boundIneq(), x_start=x_start, x_end=x_end)
+        prob, xis = no_time(Pis[:], boundIneq(), x_start=x_start, x_end=x_end)
         
         #~ print "times", tis
         for i in range(nphase):

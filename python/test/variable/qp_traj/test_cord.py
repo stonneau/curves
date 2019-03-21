@@ -16,9 +16,13 @@ import uuid; uuid.uuid4().hex.upper()[0:6]
 
 
 ######################## generate problems ########################
-def genBezierInput(numvars = 3):
-        valDep = array([np.random.uniform(0., 1.), np.random.uniform(0.,5.), 0.])
-        valEnd = array([np.random.uniform(5., 10.), np.random.uniform(0.,5.), 0.])
+def genBezierInput(numvars = 3, start = None, end = None):
+        valDep = start
+        valEnd = end
+        if valDep is None:
+                valDep = array([np.random.uniform(0., 1.), np.random.uniform(0.,5.), 0.])
+        if valEnd is None:
+                valEnd = array([np.random.uniform(5., 10.), np.random.uniform(0.,5.), 0.])
         return varBezier([valDep]+["" for _ in range(numvars)]+[valEnd], 1.)
         
 def genSplit(numCurves):
@@ -58,7 +62,7 @@ def getLineFromSegment(line):
         return (coeff, array([rhs]))
         
 
-def computeTrajectory(bezVar, splits, save, filename = uuid.uuid4().hex.upper()[0:6]):
+def computeTrajectory(bezVar, splits, save, filename = uuid.uuid4().hex.upper()[0:6], Pis = None):
         global idxFile
         colors=['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
         subs = bezVar.split(splits)
@@ -76,6 +80,7 @@ def computeTrajectory(bezVar, splits, save, filename = uuid.uuid4().hex.upper()[
         
         dimExtra = 0
         
+        #~ if Pis is None:
         for i, bez in enumerate(subs):
                 color = colors[i]
                 init_points = []
@@ -85,17 +90,29 @@ def computeTrajectory(bezVar, splits, save, filename = uuid.uuid4().hex.upper()[
                         init_points = [bezVar.waypoints()[1][-3:,-1][:2]]
                 lines, ptList = genFromLine(line_current, 5, [[0,5],[0,5]],init_points)
                 matineq0 = None; vecineq0 = None
-                for line in lines:
-                        (mat,vec) = getLineFromSegment(line)
-                        (mat,vec) = lineConstraint(bez, mat,vec,dimExtra)
-                        (matineq0, vecineq0) = (concat(matineq0,mat), concatvec(vecineq0,vec))
+                if Pis is None:
+                        for line in lines:
+                                (mat,vec) = getLineFromSegment(line)
+                                (mat,vec) = lineConstraint(bez, mat,vec,dimExtra)
+                                (matineq0, vecineq0) = (concat(matineq0,mat), concatvec(vecineq0,vec))
+                else:
+                        Pi = Pis[i][0]
+                        pi = Pis[i][1]
+                        for j in range(P.shape[0]):
+                                (mat,vec) = lineConstraint(bez,Pi,pi,dimExtra)
+                                (matineq0, vecineq0) = (concat(matineq0,mat), concatvec(vecineq0,vec))
                 ineq  = (matineq0, vecineq0)
                 G = vstack([G,ineq[0]])
                 h = concatvec(h,ineq[1])
                 line_current = getRightMostLine(ptList)
                 plotPoly  (lines, color)
+        #~ else:
+                #~ for i, P in enumerate(Pis):
+                        #~ G = vstack([G,P[0]])
+                        #~ h = concatvec(h,P[1])
         C = None; d = None
-        try:
+        #~ try:
+        if True:
                 res = quadprog_solve_qp(P, q, G=G, h=h, C=C, d=d)
                 #plot bezier
                 for i, bez in enumerate(subs):
@@ -109,11 +126,11 @@ def computeTrajectory(bezVar, splits, save, filename = uuid.uuid4().hex.upper()[
                         color = colors[i]
                         test = bez.toBezier3(res[:])
                         plotBezier(test, color)
-                        plotControlPoints(test, color)
+                        #~ plotControlPoints(test, color)
                 if save:
                         plt.savefig("subcp"+filename+str(idxFile))
                 final = bezVar.toBezier3(res[:])
-                plotControlPoints(final, "black")
+                #~ plotControlPoints(final, "black")
                 if save:
                         plt.savefig("cp"+filename+str(idxFile))
                 idxFile += 1
@@ -123,21 +140,24 @@ def computeTrajectory(bezVar, splits, save, filename = uuid.uuid4().hex.upper()[
                         plt.show()
                 
                 return final
-        except ValueError:
-                plt.close()
+        #~ except ValueError:
+                #~ plt.close()
 ######################## solve a given problem ########################
 
 
 #solve and gen problem
-def gen(save = False):
-        testConstant = genBezierInput(20)
-        splits = genSplit(4)
-        return computeTrajectory(testConstant,splits, save), testConstant
-
-res = None
-for i in range(1):
-        res = gen(False)
-        #~ if res[0] != None:
-                #~ break
+def gen(save = False, Pis = None, start=None, end = None, tis = None):
+        testConstant = genBezierInput(8, start, end)
+        splits = genSplit(4)        
+        if (tis is not None):
+                splits = tis
+        return computeTrajectory(testConstant,splits, save, Pis=Pis), testConstant
+if __name__ == '__main__':
+                
+        res = None
+        for i in range(1):
+                res = gen(False)
+                #~ if res[0] != None:
+                        #~ break
 
 
