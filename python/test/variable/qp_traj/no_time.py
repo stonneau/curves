@@ -18,7 +18,10 @@ def no_time(Pis, V, x_start = None, x_end = None, ccost = None, tis = None): #TO
     num_vars = nvars * num_phases    
     if tis is None:
         tis = ones(len(Pis))
+    tis = [el * 1.2 for el in tis]
     x   = [cp.Variable(rdim) for i in range(num_vars)] 
+    Vn   = V[0][:,:rdim]*n        ; v = V[1]
+    Ann1 = Vn*(n-1)        ; a = v
     
     constraints = []
     
@@ -26,7 +29,6 @@ def no_time(Pis, V, x_start = None, x_end = None, ccost = None, tis = None): #TO
         idx = j*nvars
         Pi = Pis[j]
         P    = Pi[0][:,:rdim]       ; p  = Pi  [1]
-        Vn   = V[0][:,:rdim]*n        ; v = V[1]
         #~ ti = tis[j]
         #~ ti >= 0.0001,
         #positions
@@ -38,10 +40,11 @@ def no_time(Pis, V, x_start = None, x_end = None, ccost = None, tis = None): #TO
         #~ P*(x[idx+3]) <= p,
         ]
         #velocities
-        for k in range(1,nvars):            
-            constraints = constraints + [
-            Vn*(x[idx+k]-x[idx+k-1]) <= v*tis[j] 
-        ]
+        vel = [x[idx+k]-x[idx+k-1] for k in range(1,nvars)]
+        constraints = constraints + [Vn*(el) <= v*tis[j] for el in vel]
+        #accelerations
+        acc = [vel[k+1]-vel[k] for k in range(0,nvars-2)]
+        constraints = constraints + [Ann1*(el) <= a*tis[j]*tis[j] for el in acc]
         
     #continuity constraints
     for j in range(1,len(Pis)):

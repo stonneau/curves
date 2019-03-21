@@ -218,28 +218,28 @@ if __name__ == '__main__':
         V = boundIneq()
         x_start = pDef.start.reshape((-1,))
         x_end = pDef.end.reshape((-1,))
-
+        
         prob, xis, tis = solve_straight_lines(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end)
         
         #~ print "times", tis
-        for i in range(len(tis)):
-            ti = abs(tis[i][0])
-            b = bezierFromVal(xis[i*nvars:i*nvars+nvars], abs(ti))
-            plotBezier(b, colors[i], label = None, linewidth = 3.0)
-            plotControlPoints(b, colors[i],linewidth=2)
+        #~ for i in range(len(tis)):
+            #~ ti = abs(tis[i][0])
+            #~ b = bezierFromVal(xis[i*nvars:i*nvars+nvars], abs(ti))
+            #~ plotBezier(b, colors[i], label = None, linewidth = 3.0)
+            #~ plotControlPoints(b, colors[i],linewidth=2)
         
-        from no_time import no_time
+        from no_time import no_time, tailored_cost
         from no_time import bezierFromVal as beznotime
         
         ntis = min_time(xis,nphase,boundIneq())
         
         prob, xis = no_time(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = None, tis = ntis)
         
-        print "xis", xis
+        #~ print "xis", xis
         
         for i in range(nphase):
             b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)
-            plotBezier(b, "b", label = None, linewidth = 3.0)
+            plotBezier(b, colors[i], label = None, linewidth = 3.0)            
         
         plt.show()
         
