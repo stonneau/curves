@@ -78,16 +78,16 @@ def genConstraintsPerPhase(pDef, numphases):
                 if i == 0:
                         #~ init_points = [bezVar.waypoints()[1][:3,0][:2]]
                         init_points = [pDef.start.flatten()[:2]]; 
-                        init_points = init_points + [init_points[0] + np.array([0.1,0.1])]
-                        init_points = init_points + [init_points[0] + np.array([-0.1,0.1])]
-                        init_points = init_points + [init_points[0] + np.array([-0.1,-0.1])]
-                        init_points = init_points + [init_points[0] + np.array([0.1,0.1])]
+                        init_points = init_points + [init_points[0] + np.array([1,1])]
+                        init_points = init_points + [init_points[0] + np.array([-1,1])]
+                        init_points = init_points + [init_points[0] + np.array([-1,-1])]
+                        init_points = init_points + [init_points[0] + np.array([1,1])]
                 if i == numphases-1:
                         init_points = init_points + [pDef.end.flatten()[:2]]
-                        init_points = init_points + [init_points[0] + np.array([0.1,0.1])]
-                        init_points = init_points + [init_points[0] + np.array([-0.1,0.1])]
-                        init_points = init_points + [init_points[0] + np.array([-0.1,-0.1])]
-                        init_points = init_points + [init_points[0] + np.array([0.1,0.1])]
+                        init_points = init_points + [init_points[-1] + np.array([1,1])]
+                        init_points = init_points + [init_points[-1] + np.array([-1,1])]
+                        init_points = init_points + [init_points[-1] + np.array([-1,-1])]
+                        init_points = init_points + [init_points[-1] + np.array([1,1])]
                 lines, ptList = genFromLine(line_current, 5, [[0,50],[0,50]],init_points)
                 matineq0 = None; vecineq0 = None
                 for line in lines:

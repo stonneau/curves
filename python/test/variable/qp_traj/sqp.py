@@ -20,7 +20,7 @@ def solve_straight_lines(Pis, V, x_start = None, x_end = None): #TODO: add V and
     tis = [cp.Variable(1) for i in range(num_phases)]
     Tis = [cp.Variable(1) for i in range(num_phases)]
     
-    constraints = [Ti >= np.sqrt(2) for Ti in Tis]
+    constraints = [Ti >= 0. for Ti in Tis]
     constraints = constraints + [ti >= 0.00 for ti in tis]
     
     for j in range(len(Pis)):
@@ -54,7 +54,7 @@ def solve_straight_lines(Pis, V, x_start = None, x_end = None): #TODO: add V and
         
         dc = [x[idx+1],x[idx+2]+x[idx+1],x[idx+5]-2*x[idx+4]+x[idx+3]-x[idx+2]-2*x[idx+1]-x[idx],x[idx+4]-x[idx+3],x[idx+1] ]
         ddc = [dc[k+1]-dc[k] for k in range(len(dc)-1)]
-        #~ constraints = constraints + [A * ddci <= a * Ti for ddci in ddc]
+        constraints = constraints + [A * ddci <= a * Ti for ddci in ddc]
         
         
     #continuity constraints
@@ -123,8 +123,12 @@ def solve_straight_lines(Pis, V, x_start = None, x_end = None): #TODO: add V and
             
     if x_start is not None:
         constraints = constraints + [x[0]  == x_start[:rdim]]
+        constraints = constraints + [x[1]  == zeros(rdim)]
+        constraints = constraints + [x[1]  == x[2]]
     if x_end is not None:
         constraints = constraints + [x[-1]  == x_end[:rdim]]
+        constraints = constraints + [x[-2]  == zeros(rdim)]
+        constraints = constraints + [x[-3]  == x[-2]]
     #~ f = -cp.sum(cp.log(cp.quad_form(tis[0]**2, identity(1)) - Tis[0]))
     #~ f = -cp.log(cp.quad_form(tis[0], identity(1)))
     #~ f = -cp.log(1-cp.quad_form(tis[0], identity(1)))
@@ -138,12 +142,15 @@ def solve_straight_lines(Pis, V, x_start = None, x_end = None): #TODO: add V and
     
     #~ obj = cp.Minimize(sum(tis) + sum(log_cost))
     #~ obj = cp.Minimize(sum(tis) - sum(f))
-    obj = cp.Minimize(sum(tis))
+    obj = cp.Minimize(sum(tis) + sum(Tis))
     prob = cp.Problem(obj, constraints)
-    prob.solve(solver="ECOS",verbose=True)
+    prob.solve(solver="ECOS",verbose=False)
     #~ prob.solve(verbose=True)
     
-    tis, xs = tovals(tis), tovals(x)
+    tis, Tis, xs = tovals(tis), tovals(Tis), tovals(x)
+    
+    tis = [max(tis[i], np.sqrt(Tis[i])) for i in range(len(tis))]
+    print "tis", tis
     
     for j in range(1,len(tis)):
         idx = j*nvars
@@ -222,11 +229,11 @@ if __name__ == '__main__':
         prob, xis, tis = solve_straight_lines(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end)
         
         #~ print "times", tis
-        #~ for i in range(len(tis)):
-            #~ ti = abs(tis[i][0])
-            #~ b = bezierFromVal(xis[i*nvars:i*nvars+nvars], abs(ti))
-            #~ plotBezier(b, colors[i], label = None, linewidth = 3.0)
-            #~ plotControlPoints(b, colors[i],linewidth=2)
+        for i in range(len(tis)):
+            ti = abs(tis[i][0])
+            b = bezierFromVal(xis[i*nvars:i*nvars+nvars], abs(ti))
+            plotBezier(b, colors[-1], label = None, linewidth = 3.0)
+            #~ plotControlPoints(b, colors[-1],linewidth=2)
         
         from no_time import no_time, tailored_cost
         from no_time import bezierFromVal as beznotime
@@ -239,8 +246,36 @@ if __name__ == '__main__':
         
         for i in range(nphase):
             b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)
-            plotBezier(b, colors[i], label = None, linewidth = 3.0)            
+            #~ plotBezier(b, colors[i], label = None, linewidth = 3.0)            
+            plotBezier(b, colors[0], label = "classic", linewidth = 3.0)            
+            
+        prob, xis = no_time(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = 3, tis = ntis)
         
+        for i in range(nphase):
+            b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)      
+            plotBezier(b, colors[1], label = "jerk", linewidth = 3.0)   
+            
+        prob, xis = no_time(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = 2, tis = ntis)
+        
+        
+        for i in range(nphase):
+            b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)       
+            plotBezier(b, colors[2], label = "acc", linewidth = 3.0)         
+            
+        prob, xis = no_time(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = 1, tis = ntis)
+        
+        
+        for i in range(nphase):
+            b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)
+            plotBezier(b, colors[3], label = "vel", linewidth = 3.0)      
+             
+        #~ prob, xis = no_time(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = 0, tis = ntis)
+        
+        
+        #~ for i in range(nphase):
+            #~ b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)        
+            #~ plotBezier(b, colors[4], label = "distance", linewidth = 3.0)                
+        plt.legend()
         plt.show()
         
         #~ plt.show()
