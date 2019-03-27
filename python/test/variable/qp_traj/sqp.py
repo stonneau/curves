@@ -150,15 +150,17 @@ def solve_straight_lines(Pis, V, x_start = None, x_end = None): #TODO: add V and
     tis, Tis, xs = tovals(tis), tovals(Tis), tovals(x)
     
     tis = [max(tis[i], np.sqrt(Tis[i])) for i in range(len(tis))]
-    print "tis", tis
+    #~ print "tis", tis
     
     for j in range(1,len(tis)):
         idx = j*nvars
         if tis[j-1] < tis[j]:
             xs[idx-2] =  xs[idx+1] / tis[j] * tis[j-1]
-            xs[idx-3] =  xs[idx+2] / tis[j] * tis[j-1]
         else:
             xs[idx+1] =  xs[idx-2] / tis[j-1] * tis[j]
+        if tis[j-1]**2 < tis[j]**2:
+            xs[idx-3] =  xs[idx+2] / tis[j] * tis[j-1]
+        else:
             xs[idx+2] =  xs[idx-3] / tis[j-1] * tis[j]
     
     return prob, xs, tis
@@ -228,11 +230,30 @@ if __name__ == '__main__':
         
         prob, xis, tis = solve_straight_lines(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end)
         
+        
+        useless_indices = []
+        for i, el in enumerate(tis):
+            if el[0] <= 0.0001:
+                useless_indices = useless_indices + [i]
+                nphase -= 1
+            
+        #~ useless_indices = [i for i, el in enumerate(tis) if el[0] <= 0.00001]
+        useless_indices.reverse()
+        for el in useless_indices:
+            del inequalities_per_phase[el]
+            print "removed el ", el
+        
+        if len(useless_indices) > 0:
+            prob, xis, tis = solve_straight_lines(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end)
+        #clean 0 times:
+        #~ for i, ti in enumerate(tis):
+            #~ if ti ==0.:
+        
         #~ print "times", tis
-        for i in range(len(tis)):
-            ti = abs(tis[i][0])
-            b = bezierFromVal(xis[i*nvars:i*nvars+nvars], abs(ti))
-            plotBezier(b, colors[-1], label = None, linewidth = 3.0)
+        #~ for i in range(len(tis)):
+            #~ ti = abs(tis[i][0])
+            #~ b = bezierFromVal(xis[i*nvars:i*nvars+nvars], abs(ti))
+            #~ plotBezier(b, colors[-1], label = None, linewidth = 3.0)
             #~ plotControlPoints(b, colors[-1],linewidth=2)
         
         from no_time import no_time, tailored_cost
@@ -240,27 +261,19 @@ if __name__ == '__main__':
         
         ntis = min_time(xis,nphase,boundIneq())
         
-        prob, xis = no_time(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = None, tis = ntis)
-        
-        #~ print "xis", xis
-        
-        for i in range(nphase):
-            b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)
-            #~ plotBezier(b, colors[i], label = None, linewidth = 3.0)            
-            plotBezier(b, colors[0], label = "classic", linewidth = 3.0)            
             
-        prob, xis = no_time(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = 3, tis = ntis)
+        #~ prob, xis = no_time(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = 3, tis = ntis)
         
-        for i in range(nphase):
-            b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)      
-            plotBezier(b, colors[1], label = "jerk", linewidth = 3.0)   
+        #~ for i in range(nphase):
+            #~ b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)      
+            #~ plotBezier(b, colors[1], label = "jerk", linewidth = 3.0)   
             
-        prob, xis = no_time(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = 2, tis = ntis)
+        #~ prob, xis = no_time(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = 2, tis = ntis)
         
         
-        for i in range(nphase):
-            b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)       
-            plotBezier(b, colors[2], label = "acc", linewidth = 3.0)         
+        #~ for i in range(nphase):
+            #~ b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)       
+            #~ plotBezier(b, colors[2], label = "acc", linewidth = 3.0)         
             
         prob, xis = no_time(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = 1, tis = ntis)
         
@@ -268,13 +281,21 @@ if __name__ == '__main__':
         for i in range(nphase):
             b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)
             plotBezier(b, colors[3], label = "vel", linewidth = 3.0)      
-             
+            
         #~ prob, xis = no_time(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = 0, tis = ntis)
         
         
         #~ for i in range(nphase):
-            #~ b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)        
-            #~ plotBezier(b, colors[4], label = "distance", linewidth = 3.0)                
+            #~ b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)
+            #~ plotBezier(b, colors[4], label = "distance", linewidth = 3.0)      
+            
+            
+        prob, xis = no_time(inequalities_per_phase[:], V, x_start=x_start, x_end=x_end, ccost = None, tis = ntis)
+        
+        for i in range(nphase):
+            b = beznotime(xis[i*nvars:i*nvars+nvars], 1.)        
+            plotBezier(b, colors[0], label = "classic", linewidth = 3.0)       
+                   
         plt.legend()
         plt.show()
         

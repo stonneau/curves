@@ -23,7 +23,7 @@ def derivate(xvars_phase, t, num):
     if num <= 0:
         return xvars_phase
     deg = len(xvars_phase)-1
-    print "deg", deg
+    #~ print "deg", deg
     deriv = [ (deg / t) * (xvars_phase[j+1]-xvars_phase[j]) for j in range(deg) ]
     return derivate(deriv,t,num-1)
        
@@ -40,20 +40,27 @@ def eval_at_point_square(pis, t, square = True):
     if square:
         return cp.quad_form(res,identity(2))
     else:
+        #~ print "point ", res
         return res
     
 def eval_at_points(pis, T, timestep):
-    res = 0
+    res = 0.
+    #~ print "num points "
     for i in range(int(T/timestep)):
         res = res + eval_at_point_square(pis, (float)(i)*timestep / T)
     res = res + eval_at_point_square(pis, 1.)
     return res
     
 def eval_at_pointszero(pis, T, timestep):
-    res = 0
+    res = 0.
     lastval = 0.
+    #~ print "num steps ", int(T/timestep)
+    #~ print "T ", T
+    #~ print "ntimesteps ", timestep
     for i in range(1,int(T/timestep)):        
         lastval = (float)(i)*timestep / T
+        #~ print "current ", lastval
+        #~ print "lastval ", lastval
         rest = eval_at_point_square(pis, lastval, square = False) - eval_at_point_square(pis, (float)(i-1)*timestep / T, square = False)
         res += cp.quad_form(rest,identity(2))
     res = res+ cp.quad_form(eval_at_point_square(pis, 1., square = False) - eval_at_point_square(pis, lastval, square = False),identity(2))
@@ -62,17 +69,25 @@ def eval_at_pointszero(pis, T, timestep):
 def eval_cost_integral(xvars, tis, num_points, num_deriv):
     T = sum(tis)
     timestep = T / num_points
-    res = 0    
-    if num_deriv ==0:
-        for i in range(len(xvars) / nvars - 1):
-            if tis[i] > 0.:
-                pis = derivate(xvars[nvars*i:nvars*(i+1)],tis[i], num_deriv)
-                res += eval_at_pointszero(pis, tis[i], timestep)
-    else:
-        for i in range(len(xvars) / nvars):
-            if tis[i] > 0.:
-                pis = derivate(xvars[nvars*i:nvars*(i+1)],tis[i], num_deriv)
-                res += eval_at_points(pis, tis[i], timestep)
+    #~ print "T", T
+    #~ print "tis", tis    
+    #~ print "time step", timestep
+    #~ print "range", len(xvars) 
+    #~ print "range", len(xvars) / nvars
+    res = 0.    
+    #~ if num_deriv ==0:
+    if True:
+        for k in range(len(xvars) / nvars):
+            if tis[k] > 0.:
+                #~ print "in PHASE ", k
+                #~ print "time ", tis[k]
+                pis = derivate(xvars[nvars*k:nvars*(1+k)],tis[k], num_deriv)
+                res += eval_at_pointszero(pis, tis[k], timestep)
+    #~ else:
+        #~ for i in range(len(xvars) / nvars):
+            #~ if tis[i] > 0.:
+                #~ pis = derivate(xvars[nvars*i:nvars*(i+1)],tis[i], num_deriv)
+                #~ res += eval_at_points(pis, tis[i], timestep)
         
     return res
 #~ def cost_integral(xvars, t, num, num_eval):
@@ -83,12 +98,12 @@ def eval_cost_integral(xvars, tis, num_points, num_deriv):
 
 #find the minimum time sequence of straight lines connecting from start to end position along union of convex sets
 
-def no_time(Pis, V, x_start = None, x_end = None, ccost = None, tis = None): #TODO: add V and A    
+def no_time(Pis, V, x_start = None, x_end = None, ccost = None, tis = None): #TODO: add V and A  
     num_phases = len(Pis)
     num_vars = nvars * num_phases    
     if tis is None:
         tis = ones(len(Pis))
-    tis = [el * 1.0 for el in tis]
+    tis = [el * 1. for el in tis]
     x   = [cp.Variable(rdim) for i in range(num_vars)] 
     Vn   = V[0][:,:rdim]*n        ; v = V[1]
     Ann1 = Vn*(n-1)        ; a = v * 10.
@@ -135,35 +150,46 @@ def no_time(Pis, V, x_start = None, x_end = None, ccost = None, tis = None): #TO
     #~ print "tis", tis
     #~ tis = [idx%nvars for idx in range(len(x)-1)]
     #~ print "tis", tis
-    tis = [tis[idx/nvars] for idx in range(len(x)-1)]
+    #~ tis = [tis[idx/nvars] for idx in range(len(x)-1)]
     #~ print "tis", tis
-    vel = []; acc = []; jerk = []
+    vel = []; acc = []; jerk = []; test = []
     for i in range(num_phases):
         off  = i * nvars
         vb = [(x[off+idx+1] - x[off+idx]) / degree    * tis[i] for idx in range(nvars-1)]
+        testb = [(x[off+idx+1] - x[off+idx]) / degree  for idx in range(nvars-1)]
         ab = [(vb[idx+1] - vb[idx])    /(degree-1) * tis[i] for idx in range(len(vb)-1)]
         jerk = jerk + [(ab[idx+1] - ab[idx])  /(degree-2) * tis[i] for idx in range(len(ab)-1)]
         vel = vel + vb
+        test = test + testb
         acc = acc + ab
     #~ v = [(x[idx+1] - x[idx]) / degree * tis[idx/nvars] for idx in range(len(x)-1)]
     #~ a = [(v[idx+1] - v[idx]) / (degree-1) * tis[idx/(nvars-1)] for idx in range(len(v)-1)]
     #~ obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in vel]))    
-    #~ obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in acc]))    
-    obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in jerk]))    
+    #~ obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in acc])) 
+    res = []
+    #~ for i, j in enumerate(x[1:])   :
+    for i, j in enumerate(test[1:]) :
+        #~ res = res + [cp.quad_form(j-x[i],identity(rdim))]
+        res = res + [cp.quad_form(j-test[i],identity(rdim))]
+    #~ obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in jerk]))    
+    obj = cp.Minimize(sum(res))    
     if ccost is not None:
         print "ccost", ccost
-        if ccost == 1:
-            obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in vel]))    
-        elif ccost == 2:
-            obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in acc]))    
-        elif ccost == 3:
-            obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in jerk]))    
-        else:
-            obj = cp.Minimize(eval_cost_integral(x, tis, num_points = 40, num_deriv = ccost))
+        #~ if ccost == 1:
+            #~ obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in vel]))    
+        #~ elif ccost == 2:
+            #~ obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in acc]))    
+        #~ elif ccost == 3:
+            #~ obj = cp.Minimize(sum([cp.quad_form(j,identity(rdim)) for j in jerk]))    
+        #~ else:
+        obj = cp.Minimize(eval_cost_integral(x, tis, num_points = 100, num_deriv = ccost))
         #~ obj = cp.Minimize(sum ([cp.quad_form(xi, ccost[k%nvars][0]) + ccost[k%nvars][1].T * xi for k, xi in enumerate(x)]))
         
     prob = cp.Problem(obj, constraints)
-    prob.solve(solver="ECOS",verbose=False)
+    res = prob.solve(solver="ECOS",verbose=False)
+    print "Cost ",  ccost, res
+    distance = eval_cost_integral(tovals(x), tis, num_points = 100, num_deriv=0)
+    print "Distance", distance.value
     return prob, tovals(x)
     
 #~ def makeVelContinuous(xis):
@@ -199,7 +225,7 @@ def min_time(xs,V):
         constraints = constraints + [ V[0].dot(wps[:2,i]) <= V[1] *t ]
     obj = cp.Minimize(t)
     prob = cp.Problem(obj, constraints)
-    prob.solve(solver="ECOS",verbose=True)
+    prob.solve(solver="ECOS",verbose=False)
     return t.value[0]
     
 def tailored_cost(c, nvars):
