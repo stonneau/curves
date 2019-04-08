@@ -52,11 +52,13 @@ f10 = genf(1,0)
 #distance from joint 2 to joint 1 
 f12 = genf2vars(1,1,0)
 
-def positions(x):
-    res = zeros(2)
-    res[0] = f10(x)
-    res[1] = f12(x)
-    return res
+def positions():
+    def f(x):
+        res = zeros(2)
+        res[0] = f10(x)
+        res[1] = f12(x)
+        return res
+    return f
 
 
 ##############" END CONSTRAINTS #############
@@ -69,23 +71,25 @@ def positions(x):
 
 #position
 
-def Jpositions(x):
-    J = zeros((2,2*rdim))
-    x0 = x[:2]
-    x1 = x[2:]
-    x1mx0 = (x1-x0)
-    x0mx1 = (x0-x1)    
-    df1dx0 = 4*x0*(x0.T.dot(x0) - 1)
-    df1dx1 = zeros(rdim)
+def Jpositions():
+    def f(x):
+        J = zeros((2,2*rdim))
+        x0 = x[:2]
+        x1 = x[2:]
+        x1mx0 = (x1-x0)
+        x0mx1 = (x0-x1)    
+        df1dx0 = 4*x0*(x0.T.dot(x0) - 1)
+        df1dx1 = zeros(rdim)
 
-    df2dx0 = 4*(x0mx1)*(x1mx0.T.dot(x1mx0) -1)
-    df2dx1 = 4*(x1mx0)*(x1mx0.T.dot(x1mx0) -1)
-    
-    J[0,:2] = df1dx0
-    J[0,2:] = df1dx1
-    J[1,:2] = df2dx0
-    J[1,2:] = df2dx1
-    return J
+        df2dx0 = 4*(x0mx1)*(x1mx0.T.dot(x1mx0) -1)
+        df2dx1 = 4*(x1mx0)*(x1mx0.T.dot(x1mx0) -1)
+        
+        J[0,:2] = df1dx0
+        J[0,2:] = df1dx1
+        J[1,:2] = df2dx0
+        J[1,2:] = df2dx1
+        return J
+    return f
     
     
 def Jineq(A,b):
@@ -120,7 +124,7 @@ def constraint(name,*args):
     
 ##############" CONSTRAINT DIC #############
         
-def stepC(x, x_end, eps = 1., hard = [all_constraints["pos"]], soft = []):
+def stepC(x, x_end, eps = 1., hard = [constraint("pos")], soft = []):
     
     #calling appropriate constraints
     F = zeros(0);  G = zeros(0); J = zeros((0,4)); JG = zeros((0,4))
@@ -160,10 +164,9 @@ if __name__ == '__main__':
     A = zeros(2); A[1] = 1
     A = A.reshape((1,2))
     b = 1.26
-    ineq = ineqConstraint(A,b)
     
     def ik(x_end):        
-        hard = [all_constraints["pos"]]
+        hard = [constraint("pos")]
         soft = [constraint("target",x_end),constraint("ineq",A,b)]
         
         x = zeros(4); x[:rdim]= [0.,1.2]
