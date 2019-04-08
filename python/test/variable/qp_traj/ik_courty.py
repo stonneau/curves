@@ -34,7 +34,7 @@ def gen_target(x_end):
     def f(x):
         x1 = x[rdim:] - x_end
         return x1.dot(x1)
-    softC["target"][0] = f
+    return f
 
 #distance from base to joint 1 
 f10 = genf(1,0)
@@ -50,7 +50,12 @@ def positions(x):
     return res
 
 #target position constraint
-target = None
+#~ target = None
+
+#~ def gen
+
+##############" END CONSTRAINTS #############
+
 
 ##############" JACOBIANS #############
 
@@ -59,7 +64,7 @@ target = None
 
 #position
 
-def Jpositions(x,x_end):
+def Jpositions(x):
     J = zeros((2,2*rdim))
     x0 = x[:2]
     x1 = x[2:]
@@ -79,16 +84,22 @@ def Jpositions(x,x_end):
   
 ###### SOFT CONSTRAINTS JACOBIANS ######  
 
-def Jtarget(x,x_end):  
-    J = zeros((1,2*rdim)) 
-    J[0,2:] = 2*(x[2:]-x_end) 
-    return J
+def Jtarget(x_end):  
+    def fu(x):
+        J = zeros((1,2*rdim)) 
+        J[0,2:] = 2*(x[2:]-x_end) 
+        return J
+    return fu
     
 ##############" CONSTRAINT DIC #############
     
 hardC = { "pos" : [positions, Jpositions] }
 
-softC = {"target" : [target, Jtarget] } 
+softC = {"target" : [gen_target, Jtarget] } 
+
+def targetConstraint(x_end):
+    target = softC["target"]
+    return [target[0](x_end), target[1](x_end)]
     
     
 def F(x):
@@ -98,18 +109,16 @@ def F(x):
     res[2] = target(x)
     return res
     
-def stepC(x, x_end, eps = 1., hConstraints = ["pos"], sConstraints = ["target"]):
+def stepC(x, x_end, eps = 1., hard = [hardC["pos"]], soft = []):
     
     #calling appropriate constraints
-    hard = [hardC[el] for el in hConstraints]
-    soft = [softC[el] for el in sConstraints]
     F = zeros(0);  G = zeros(0); J = zeros((0,4)); JG = zeros((0,4))
     for (fi, Ji) in hard:
         F = hstack([F,fi(x)])
-        J = vstack([J ,Ji(x,x_end)])
+        J = vstack([J ,Ji(x)])
     for (gi, Ji) in soft:
         G  = hstack([G,gi(x)])
-        JG = vstack([JG ,Ji(x,x_end)])    
+        JG = vstack([JG ,Ji(x)])    
     #evluation
     nfx = norm(F) + norm(G)
     if nfx >= 0.0009:    
@@ -137,28 +146,26 @@ from  plot_cord import *
 
 if __name__ == '__main__':
     
-    #~ x_end = [-1,-1.]
-    x_end = [1.2,1.2]
-    gen_target(x_end)
+    def ik(x_end):        
+        hard = [hardC["pos"]]
+        soft = [targetConstraint(x_end)]
+        
+        x = zeros(4); x[:rdim]= [0.,1.2]
+        x[rdim:]= [0.,2.]
+        for i in range(100):
+            x = stepC(x,x_end, 0.1,hard, soft)
+            
+        xis = array([[0,0],x[:rdim],x[rdim:]])
+            
+        plotPoints(xis, color = "b")
+        plotPoints(array([x_end]), color = "r")
+        plotSegment(xis[:2], color = "b")
+        plotSegment(xis[1:], color = "b")
     
-    x = zeros(4); x[:rdim]= [0.,1.2]
-    x[rdim:]= [0.,2.]
-    #~ for i in range(5):
-        #~ x = step(x,x_end, 1)
-    for i in range(100):
-        #~ x = step(x,x_end, 0.1)
-        x = stepC(x,x_end, 0.1)
-    #~ for i in range(10):
-        #~ x = step(x,0.01)
-        
-    xis = array([[0,0],x[:rdim],x[rdim:]])
-        
-    plotPoints(xis, color = "b")
-    plotPoints(array([x_end]), color = "r")
-    plotSegment(xis[:2], color = "b")
-    plotSegment(xis[1:], color = "b")
+    ik([1.2,1.2])
+    ik([2,2])
     
                
     #~ plt.legend()
-    #~ plt.show()
+    plt.show()
     
