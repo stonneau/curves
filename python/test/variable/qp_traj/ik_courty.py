@@ -96,12 +96,8 @@ def Jineq(A,b):
         J = zeros((2*Arows,2*rdim))
         if(fin[0]>0.): 
             J[0:Arows,:2] = A[:]
-        #~ else:
-            #~ print "ok"
         if(fin[1]>0.):
             J[Arows: ,2:] = A[:]
-        #~ else:
-            #~ print "ok"
         return J
     return f
   
@@ -116,19 +112,15 @@ def Jtarget(x_end):
     
 ##############" CONSTRAINT DIC #############
     
-hardC = { "pos" : [positions, Jpositions] }
+all_constraints = { "pos" : [positions, Jpositions], "target" : [gen_target, Jtarget], "ineq" : [gen_ineq, Jineq]}
 
-softC = {"target" : [gen_target, Jtarget] } 
-
-def targetConstraint(x_end):
-    target = softC["target"]
-    return [target[0](x_end), target[1](x_end)]
+def constraint(name,*args):
+    cons = all_constraints[name]
+    return [cons[0](*args), cons[1](*args)]
     
-    
-def ineqConstraint(A, b):
-    return [gen_ineq(A, b), Jineq(A,b)]
+##############" CONSTRAINT DIC #############
         
-def stepC(x, x_end, eps = 1., hard = [hardC["pos"]], soft = []):
+def stepC(x, x_end, eps = 1., hard = [all_constraints["pos"]], soft = []):
     
     #calling appropriate constraints
     F = zeros(0);  G = zeros(0); J = zeros((0,4)); JG = zeros((0,4))
@@ -171,8 +163,8 @@ if __name__ == '__main__':
     ineq = ineqConstraint(A,b)
     
     def ik(x_end):        
-        hard = [hardC["pos"]]
-        soft = [targetConstraint(x_end),ineq]
+        hard = [all_constraints["pos"]]
+        soft = [constraint("target",x_end),constraint("ineq",A,b)]
         
         x = zeros(4); x[:rdim]= [0.,1.2]
         x[rdim:]= [0.,2.]
