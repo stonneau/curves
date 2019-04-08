@@ -30,10 +30,20 @@ def genf(dist,i):
     return f
 
 def gen_target(x_end):
-    global softC
     def f(x):
         x1 = x[rdim:] - x_end
         return x1.dot(x1)
+    return f
+
+# A x <= b
+def gen_ineq(A,b):
+    def f(x):
+        x0 = x[:rdim]
+        x1 = x[rdim:]
+        res = zeros(rdim)
+        res[0] = max(A.dot(x0) - b,0.)
+        res[1] = max(A.dot(x1) - b,0.)
+        return res
     return f
 
 #distance from base to joint 1 
@@ -42,17 +52,12 @@ f10 = genf(1,0)
 #distance from joint 2 to joint 1 
 f12 = genf2vars(1,1,0)
 
-
 def positions(x):
     res = zeros(2)
     res[0] = f10(x)
     res[1] = f12(x)
     return res
 
-#target position constraint
-#~ target = None
-
-#~ def gen
 
 ##############" END CONSTRAINTS #############
 
@@ -81,6 +86,24 @@ def Jpositions(x):
     J[1,:2] = df2dx0
     J[1,2:] = df2dx1
     return J
+    
+    
+def Jineq(A,b):
+    Arows = A.shape[0]
+    fineq  = gen_ineq(A, b)
+    def f(x):
+        fin = fineq(x)
+        J = zeros((2*Arows,2*rdim))
+        if(fin[0]>0.): 
+            J[0:Arows,:2] = A[:]
+        #~ else:
+            #~ print "ok"
+        if(fin[1]>0.):
+            J[Arows: ,2:] = A[:]
+        #~ else:
+            #~ print "ok"
+        return J
+    return f
   
 ###### SOFT CONSTRAINTS JACOBIANS ######  
 
@@ -102,13 +125,9 @@ def targetConstraint(x_end):
     return [target[0](x_end), target[1](x_end)]
     
     
-def F(x):
-    res = zeros(3)
-    res[0] = f10(x)
-    res[1] = f12(x)
-    res[2] = target(x)
-    return res
-    
+def ineqConstraint(A, b):
+    return [gen_ineq(A, b), Jineq(A,b)]
+        
 def stepC(x, x_end, eps = 1., hard = [hardC["pos"]], soft = []):
     
     #calling appropriate constraints
@@ -120,6 +139,7 @@ def stepC(x, x_end, eps = 1., hard = [hardC["pos"]], soft = []):
         G  = hstack([G,gi(x)])
         JG = vstack([JG ,Ji(x)])    
     #evluation
+    #~ print "F", F
     nfx = norm(F) + norm(G)
     if nfx >= 0.0009:    
         Ji = pinv(J)
@@ -145,10 +165,14 @@ from  cord_methods import *
 from  plot_cord import *
 
 if __name__ == '__main__':
+    A = zeros(2); A[1] = 1
+    A = A.reshape((1,2))
+    b = 1.26
+    ineq = ineqConstraint(A,b)
     
     def ik(x_end):        
         hard = [hardC["pos"]]
-        soft = [targetConstraint(x_end)]
+        soft = [targetConstraint(x_end),ineq]
         
         x = zeros(4); x[:rdim]= [0.,1.2]
         x[rdim:]= [0.,2.]
@@ -162,7 +186,7 @@ if __name__ == '__main__':
         plotSegment(xis[:2], color = "b")
         plotSegment(xis[1:], color = "b")
     
-    ik([1.2,1.2])
+    ik([1.2,0.2])
     ik([2,2])
     
                
