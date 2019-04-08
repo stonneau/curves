@@ -158,7 +158,7 @@ def genBezier(x0,x2, rank = 0, nsteps=4):
     return res
 
 
-def bezier2Dist(xstart, xend, nsteps=4):
+def bezier2Dist(xstart, xend, nsteps=10):
     xs0 = xstart[:rdim]
     xs1 = xstart[rdim:]
     xg0 = xend[:rdim]
@@ -168,20 +168,24 @@ def bezier2Dist(xstart, xend, nsteps=4):
     
     for i in range(nsteps+1):
         t = float(i) / fns
-        #~ def fu1(x):
-            #~ x0 = x[:2]
-            #~ x1 = x[2:]
-            #~ pt0 = 6. * t * xg0 * (1-t)**2 + 4.*t* x0 * (1-t)**3  + xs0 * (1-t)**4
-            #~ pt1 = 6. * t * xg1 * (1-t)**2 + 4.*t* x1 * (1-t)**3  + xs1 * (1-t)**4
-            #~ return ( norm(pt1-pt0)**2- dist*dist)**2
+        def fu1(x):
+            x0 = x[:2]
+            x1 = x[2:]
+            pt0 = t**2*xg0 - 2.*t*x0*(t - 1) + xs0*(t - 1)**2
+            pt1 = t**2*xg1 - 2.*t*x1*(t - 1) + xs1*(t - 1)**2
+            return ( norm(pt1-pt0)**2- 1)**2
+            
+        def gs1(x):
+            J = zeros((1,2*rdim)) 
+            x0 = x[:2]
+            x1 = x[2:]
+            J[0,:rdim] = -8.*t*(t - 1)*((t**2*xg0 - t**2*xg1 - 2.*t*x0*(t - 1) + 2.*t*x1*(t - 1) + xs0*(t - 1)**2 - xs1*(t - 1)**2)**2 - 1)*(t**2*xg0 - t**2*xg1 - 2.*t*x0*(t - 1) + 2.*t*x1*(t - 1) + xs0*(t - 1)**2 - xs1*(t - 1)**2)
+            J[0,rdim:] =  8.*t*(t - 1)*((t**2*xg0 - t**2*xg1 - 2.*t*x0*(t - 1) + 2.*t*x1*(t - 1) + xs0*(t - 1)**2 - xs1*(t - 1)**2)**2 - 1)*(t**2*xg0 - t**2*xg1 - 2.*t*x0*(t - 1) + 2.*t*x1*(t - 1) + xs0*(t - 1)**2 - xs1*(t - 1)**2)
+            return J
             
         def fu0(x, t=t):
             x0 = x[:2]
             pt0 = t**2*xg0 - 2.*t*x0*(t - 1) + xs0*(t - 1)**2
-            #~ if t ==1.:
-                #~ print 'pt0', pt0
-                #~ print 'xg0', xg0
-            #~ print "res f", (pt0.T.dot(pt0) -1)**2
             return (pt0.T.dot(pt0) -1)**2
             
         def gs0(x, t=t):
@@ -190,7 +194,7 @@ def bezier2Dist(xstart, xend, nsteps=4):
             J = zeros((1,2*rdim)) 
             J[0,:rdim] = -8.*t*(t - 1)*((t**2*xg0 - 2.*t*x0*(t - 1) + xs0*(t - 1)**2)**2 - 1)*(t**2*xg0 - 2.*t*x0*(t - 1) + xs0*(t - 1)**2)
             return J
-        res += [[fu0,gs0]]
+        res += [[fu0,gs0],[fu1,gs1]]
     return res
     
 
@@ -243,6 +247,12 @@ from hpp_spline import bezier
 from  cord_methods import *
 from  plot_cord import *
 
+def bezierFromVal(xis, numvars = 3):
+    wps = zeros((len(xis),3))
+    for i in range(numvars):
+        wps[i,:rdim] = array(xis[i])
+    return bezier(wps.transpose(), 1.)
+
 if __name__ == '__main__':
     A = zeros(2); A[1] = 1
     A = A.reshape((1,2))
@@ -268,17 +278,85 @@ if __name__ == '__main__':
     xs = ik([1.2,0.2])
     xg = ik([1.,1.])
     
-    hard = bezier2Dist(xs,xg) + [constraint("ineq",A,0.8)]
+    #~ hard = bezier2Dist(xs,xg) + [constraint("ineq",A,b)]
+    hard = bezier2Dist(xs,xg)
     x = xs[:]
-    b = 0.8
     for i in range(1000):
         #~ x = stepC(x, 0.1,hard, soft=[constraint("ineq",A,b)])
         x = stepC(x, 0.01,hard, soft=[])
     xis = array([[0,0],x[:rdim],x[rdim:]])
     plotPoints(xis, color = "g")
+    
+    
+    #plot bzier
+    b = bezierFromVal([xs[:rdim],x[:rdim],xg[:rdim]])
+    plotBezier(b, "g", label = "x0", linewidth = 2.0)
+    
+    b2 = bezierFromVal([xs[rdim:],x[rdim:],xg[rdim:]])
+    plotBezier(b2, "y", label = "x1", linewidth = 2.0)
+    
     #~ plotPoints(array([x_end]), color = "r")
     #~ plotSegment(xis[:2], color = "b")
     #~ plotSegment(xis[1:], color = "b")
-    #~ plt.legend()
+    plt.legend()
     plt.show()
+    #try to animate this shit
     
+    import matplotlib.animation as animation
+    
+    #~ xlim(b(0.)[0], b(1.)[0])
+    #~ ylim(b(0.)[1], b(1.)[1])
+    
+    dt = 1./30. #30 fps
+    t = 0.
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
+                         xlim=(-2, 2), ylim=(-2, 2))
+    ax.grid()
+
+    line, = ax.plot([], [], 'o-', lw=2)
+    time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
+    energy_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
+
+    def init():
+        """initialize animation"""
+        line.set_data([], [])
+        time_text.set_text('')
+        energy_text.set_text('')
+        return line, time_text, energy_text
+
+    def animate(i):
+        """perform animation step"""
+        global t
+        t = t+dt
+        if(t/10.>1.11):
+            t = 0.
+        ti = min(t/10., 0.99)
+        ti = max(ti,0.)
+        #~ print "ti", t/10
+        p1 = b(ti)[:rdim]
+        p2 = b2(ti)[:rdim]
+        x = [0,p1[0],p2[0]]
+        y = [0,p1[1],p2[1]]
+        #~ position = b(ti)[:rdim]
+        
+        line.set_data(*(x,y))
+        #~ time_text.set_text('time = %.1f' % pendulum.time_elapsed)
+        #~ energy_text.set_text('energy = %.3f J' % pendulum.energy())
+        return line, time_text, energy_text
+
+    # choose the interval based on dt and the time to animate one step
+    from time import time
+    t0 = time()
+    animate(0)
+    t1 = time()
+    interval = 300 * dt - (t1 - t0)
+
+    ani = animation.FuncAnimation(fig, animate, frames=300,
+                                  #~ interval=interval, blit=True, init_func=init, repeat = True)
+                                  interval=interval, blit=True, init_func=init, repeat = True, repeat_delay = 500)
+                                  
+    #~ ani.save('test_bezier.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
+                                  
+    plt.show()
