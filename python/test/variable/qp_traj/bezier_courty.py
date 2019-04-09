@@ -1,4 +1,5 @@
 
+from __future__ import division
 import cvxpy as cp
 from numpy.random import randn
 from numpy import matrix, array, zeros, ones, diag, cross, vstack, identity
@@ -156,9 +157,42 @@ def genBezier(x0,x2, rank = 0, nsteps=4):
         t = float(i) / fns
         res += [[bts(t),gbs(t)]]
     return res
+    
+    
+from sympy import *
+from sympy.tensor.array import derive_by_array
+init_printing(use_unicode=True)
+from scipy.special import binom as bino
 
+t = symbols('t')
 
-def bezier2Dist(xstart, xend, nsteps=10):
+#for the moment start / goal are given
+def symbolicbezier(numvars, pointId):
+    symbs = [symbols('x'+str(pointId)+'_'+str(i))  for i in range(numvars)] 
+    constants =  [symbols('x'+str(pointId)+'s')] + [symbols('x'+str(pointId)+'g')]    
+    npts = len(symbs) + len(constants)
+    deg = npts -1
+    pis = [constants[0]] + symbs + [constants[1]]
+    factors0 = [bino(deg,i) * t**i * (1-t)**(deg-i)*pis[i] for i in range(len(pis))]
+    eq0 = sum(factors0);
+    return eq0, pis
+
+def makeTemporalBezierVal(symBezier, pis, xsId, xgId):    
+    def ft(ti):
+        fsymbt = lambdify([t],symBezier)     
+        evalt = fsymbt(ti) #eval delta t and exponents 
+        fsymb =  lambdify(pis,evalt)  
+        def fu(x, fsymb = fsymb):
+            xvars = tuple([xsId]+[x[i*rdim:(i+1)*(rdim)] for i in range(len(pis[1:-1]))] +[xgId])            
+            return fsymb(*xvars)
+        return fu, evalt
+    return ft
+        
+def generateBezierSymbolic(numvars, pointId, xsId, xgId):
+    symb, pis = symbolicbezier(numvars, pointId)
+    return makeTemporalBezierVal(symb, pis, xsId, xgId), pis
+
+def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=10):
     xs0 = xstart[:rdim]
     xs1 = xstart[rdim:]
     xg0 = xend[:rdim]
@@ -166,33 +200,51 @@ def bezier2Dist(xstart, xend, nsteps=10):
     fns = float(nsteps)
     res = []
     
+    ft0, pis0 = generateBezierSymbolic(numControlPoints, 0, xs0, xg0)
+    ft1, pis1 = generateBezierSymbolic(numControlPoints, 1, xs1, xg1)
+    
     for i in range(nsteps+1):
         t = float(i) / fns
-        def fu1(x):
+        pt0t, eq0 = ft0(t)
+        pt1t, eq1 = ft1(t)
+        
+        #distance to base must be 1
+        distBase = (eq0*eq0 - 1)**2
+        gradDistbase = derive_by_array(distBase, (pis0[0], pis1[1]))
+        lambdaGradDistbase = lambdify(pis0,gradDistbase)  
+        
+        
+        #distance between two variables must be 1
+        dist10 = ((eq1-eq0)*(eq1-eq0) - 1)**2
+        gradDist10 = derive_by_array(dist10, (pis0[0], pis1[1]))
+        lambdaGradDist10x0 = lambdify(pis0+pis1,gradDistbase[0])  
+        lambdaGradDist10x1 = lambdify(pis0+pis1,gradDistbase[1])  
+        
+        def fu1(x, pt0t=pt0t, pt1t=pt1t):
             x0 = x[:2]
             x1 = x[2:]
-            pt0 = t**2*xg0 - 2.*t*x0*(t - 1) + xs0*(t - 1)**2
-            pt1 = t**2*xg1 - 2.*t*x1*(t - 1) + xs1*(t - 1)**2
+            pt0 = pt0t(x0)
+            pt1 = pt1t(x1)
             return ( norm(pt1-pt0)**2- 1)**2
             
         def gs1(x):
             J = zeros((1,2*rdim)) 
             x0 = x[:2]
             x1 = x[2:]
-            J[0,:rdim] = -8.*t*(t - 1)*((t**2*xg0 - t**2*xg1 - 2.*t*x0*(t - 1) + 2.*t*x1*(t - 1) + xs0*(t - 1)**2 - xs1*(t - 1)**2)**2 - 1)*(t**2*xg0 - t**2*xg1 - 2.*t*x0*(t - 1) + 2.*t*x1*(t - 1) + xs0*(t - 1)**2 - xs1*(t - 1)**2)
-            J[0,rdim:] =  8.*t*(t - 1)*((t**2*xg0 - t**2*xg1 - 2.*t*x0*(t - 1) + 2.*t*x1*(t - 1) + xs0*(t - 1)**2 - xs1*(t - 1)**2)**2 - 1)*(t**2*xg0 - t**2*xg1 - 2.*t*x0*(t - 1) + 2.*t*x1*(t - 1) + xs0*(t - 1)**2 - xs1*(t - 1)**2)
+            J[0,:rdim] = lambdaGradDist10x0(xs0,x0,xg0,xs1,x1,xg1)
+            J[0,rdim:] = lambdaGradDist10x1(xs0,x0,xg0,xs1,x1,xg1)
             return J
             
-        def fu0(x, t=t):
+        def fu0(x,  pt0t=pt0t):
             x0 = x[:2]
-            pt0 = t**2*xg0 - 2.*t*x0*(t - 1) + xs0*(t - 1)**2
+            pt0 = pt0 = pt0t(x0)
             return (pt0.T.dot(pt0) -1)**2
             
         def gs0(x, t=t):
             x0 = x[:2]
             x1 = x[2:]
             J = zeros((1,2*rdim)) 
-            J[0,:rdim] = -8.*t*(t - 1)*((t**2*xg0 - 2.*t*x0*(t - 1) + xs0*(t - 1)**2)**2 - 1)*(t**2*xg0 - 2.*t*x0*(t - 1) + xs0*(t - 1)**2)
+            J[0,:rdim] = lambdaGradDistbase(xs0,x0,xg0)
             return J
         res += [[fu0,gs0],[fu1,gs1]]
     return res
@@ -258,6 +310,9 @@ if __name__ == '__main__':
     A = A.reshape((1,2))
     b = 1.26
     
+    #~ A = array([ 0.707, -0.707]); A = A.reshape((1,2))
+    #~ b = -0.354
+    
     def ik(x_end):        
         hard = [constraint("pos")]
         soft = [constraint("target",x_end),constraint("ineq",A,b)]
@@ -278,7 +333,7 @@ if __name__ == '__main__':
     xs = ik([1.2,0.2])
     xg = ik([1.,1.])
     
-    #~ hard = bezier2Dist(xs,xg) + [constraint("ineq",A,b)]
+    hard = bezier2Dist(xs,xg) + [constraint("ineq",A,b)]
     hard = bezier2Dist(xs,xg)
     x = xs[:]
     for i in range(1000):
@@ -316,15 +371,17 @@ if __name__ == '__main__':
     ax.grid()
 
     line, = ax.plot([], [], 'o-', lw=2)
+    line2, = ax.plot([], [], 'o-', lw=2)
     time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
     energy_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
 
     def init():
         """initialize animation"""
         line.set_data([], [])
+        line2.set_data([], [])
         time_text.set_text('')
         energy_text.set_text('')
-        return line, time_text, energy_text
+        return line, line2, time_text, energy_text
 
     def animate(i):
         """perform animation step"""
@@ -341,10 +398,15 @@ if __name__ == '__main__':
         y = [0,p1[1],p2[1]]
         #~ position = b(ti)[:rdim]
         
+        x2 = [0.,0.5]
+        y2 = [0.5,1.]
+        
+        line2.set_data(*(x2,y2))
+        
         line.set_data(*(x,y))
         #~ time_text.set_text('time = %.1f' % pendulum.time_elapsed)
         #~ energy_text.set_text('energy = %.3f J' % pendulum.energy())
-        return line, time_text, energy_text
+        return line, line2, time_text, energy_text
 
     # choose the interval based on dt and the time to animate one step
     from time import time
