@@ -208,43 +208,82 @@ def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=10):
         pt0t, eq0 = ft0(t)
         pt1t, eq1 = ft1(t)
         
+        args = pis0[1:-1] + pis1[1:-1]
+        
         #distance to base must be 1
         distBase = (eq0*eq0 - 1)**2
-        gradDistbase = derive_by_array(distBase, (pis0[0], pis1[1]))
+        #~ gradDistbase = derive_by_array(distBase, (pis0[0], pis1[1]))
+        gradDistbase = derive_by_array(distBase, args)
         lambdaGradDistbase = lambdify(pis0,gradDistbase)  
         
+        #~ print "gradDistbase", gradDistbase
         
         #distance between two variables must be 1
         dist10 = ((eq1-eq0)*(eq1-eq0) - 1)**2
-        gradDist10 = derive_by_array(dist10, (pis0[0], pis1[1]))
-        lambdaGradDist10x0 = lambdify(pis0+pis1,gradDistbase[0])  
-        lambdaGradDist10x1 = lambdify(pis0+pis1,gradDistbase[1])  
+        
+        #~ print "dist 10 ", dist10
+        #~ gradDist10 = derive_by_array(dist10, (pis0[0], pis1[1]))
+        gradDist10 = derive_by_array(dist10, args)
+        #~ print "gradDist10  ", gradDist10
+        #~ print "gradDist10  ", len(gradDist10)
+        lambdaGradDist10 = lambdify(pis0+pis1,gradDist10)  
+        #~ print "lambdaGradDist10", gradDist10
+        #~ print "lambdaGradDist10", len(gradDist10)
+        #~ lambdaGradDist10x0 = lambdify(pis0+pis1,gradDistbase[0])  
+        #~ lambdaGradDist10x1 = lambdify(pis0+pis1,gradDistbase[1])  
         
         def fu1(x, pt0t=pt0t, pt1t=pt1t):
-            x0 = x[:2]
-            x1 = x[2:]
+            x0 = x[:2*numControlPoints]
+            x1 = x[2*numControlPoints:]
             pt0 = pt0t(x0)
             pt1 = pt1t(x1)
             return ( norm(pt1-pt0)**2- 1)**2
             
-        def gs1(x):
-            J = zeros((1,2*rdim)) 
-            x0 = x[:2]
-            x1 = x[2:]
-            J[0,:rdim] = lambdaGradDist10x0(xs0,x0,xg0,xs1,x1,xg1)
-            J[0,rdim:] = lambdaGradDist10x1(xs0,x0,xg0,xs1,x1,xg1)
+        #~ def gs1(x, lambdaGradDist10x0=lambdaGradDist10x0, lambdaGradDist10x1=lambdaGradDist10x1):
+        def gs1(x, lambdaGradDist10=lambdaGradDist10):
+            J = zeros((1,2*rdim*numControlPoints))
+            #~ print "DIM ", 2*rdim*numControlPoints
+            x0 = x[:2*numControlPoints]
+            x1 = x[2*numControlPoints:]
+            xvars = tuple([xs0]+[x0[i*rdim:(i+1)*(rdim)] for i in range(numControlPoints)] + [xg0] + 
+            [xs1] +[x1[i*rdim:(i+1)*(rdim)] for i in range(numControlPoints)] + [xg1]) 
+            
+            #~ print "xvars", xvars
+            grad = lambdaGradDist10(*xvars)
+            #~ print "grad", grad
+            if grad != 0.:
+                for i, el in enumerate(grad):                
+                    J[0,i*rdim:(i+1)*rdim] = el               
+            
+            #~ print "grad s1 ", J
+            #~ grad2 = lambdaGradDist10x0(*xvars)
+            #~ if grad2 != 0.:
+                #~ for i, el in enumerate(grad2):                
+                    #~ J[0,(i+numControlPoints)*rdim:(i+1+numControlPoints)*rdim] = el               
+            #~ J[0,:2*numControlPoints] = lambdaGradDist10x0(*xvars)
+            #~ J[0,2*numControlPoints:] = lambdaGradDist10x1(*xvars)
+            #~ print "gs1", J.shape
+            #~ print "gs1", J
             return J
             
         def fu0(x,  pt0t=pt0t):
-            x0 = x[:2]
+            x0 = x[:2*numControlPoints]
             pt0 = pt0 = pt0t(x0)
             return (pt0.T.dot(pt0) -1)**2
             
-        def gs0(x, t=t):
-            x0 = x[:2]
-            x1 = x[2:]
-            J = zeros((1,2*rdim)) 
-            J[0,:rdim] = lambdaGradDistbase(xs0,x0,xg0)
+        def gs0(x, lambdaGradDistbase=lambdaGradDistbase):
+            x0 = x[:2*numControlPoints]
+            #~ J = zeros((1,2*rdim)) 
+            J = zeros((1,2*rdim*numControlPoints)) 
+            #~ print "DIM ", 2*rdim*numControlPoints
+            xvars = tuple([xs0]+[x0[i*rdim:(i+1)*(rdim)] for i in range(numControlPoints)] + [xg0] )  
+            grad = lambdaGradDistbase(*xvars)
+            for i, el in enumerate(grad):         
+                #~ print "i",   i*rdim    ,i*rdim * rdim
+                J[0,i*rdim:(i+1)*rdim] = el            
+            #~ print "gs0", J.shape
+            #~ print "gs0", J
+            #~ print "grad s0 ", J
             return J
         res += [[fu0,gs0],[fu1,gs1]]
     return res
@@ -262,7 +301,8 @@ def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=10):
 def stepC(x, eps = 1., hard = [constraint("pos")], soft = []):
     
     #calling appropriate constraints
-    F = zeros(0);  G = zeros(0); J = zeros((0,4)); JG = zeros((0,4))
+    sizejac = x.shape[0]
+    F = zeros(0);  G = zeros(0); J = zeros((0,sizejac)); JG = zeros((0,sizejac))
     i = -1
     for (fi, Ji) in hard:
         i +=1
@@ -272,9 +312,8 @@ def stepC(x, eps = 1., hard = [constraint("pos")], soft = []):
         G  = hstack([G,gi(x)])
         JG = vstack([JG ,Ji(x)])    
     #evluation
-    print "F", F
+    #~ print "F", F
     print "F", norm(F)
-    #~ print "J", J.shape
     nfx = norm(F) + norm(G)
     if nfx >= 0.0001:    
         Ji = pinv(J)
@@ -310,12 +349,13 @@ if __name__ == '__main__':
     A = A.reshape((1,2))
     b = 1.26
     
-    #~ A = array([ 0.707, -0.707]); A = A.reshape((1,2))
-    #~ b = -0.354
+    A = array([ 0.707, -0.707]); A = A.reshape((1,2))
+    b = -0.354
     
     def ik(x_end):        
         hard = [constraint("pos")]
-        soft = [constraint("target",x_end),constraint("ineq",A,b)]
+        #~ soft = [constraint("target",x_end),constraint("ineq",A,b)]
+        soft = [constraint("target",x_end)]
         
         x = zeros(4); x[:rdim]= [0.,1.2]
         x[rdim:]= [0.,2.]
@@ -332,22 +372,49 @@ if __name__ == '__main__':
     
     xs = ik([1.2,0.2])
     xg = ik([1.,1.])
+                     
+    plt.show()
     
-    hard = bezier2Dist(xs,xg) + [constraint("ineq",A,b)]
-    hard = bezier2Dist(xs,xg)
-    x = xs[:]
-    for i in range(1000):
+    nvars = 3
+    #~ hard = bezier2Dist(xs,xg,nvars) + [constraint("ineq",A,b)]
+    hard = bezier2Dist(xs,xg,nvars)
+    #~ x = xs[:]
+    x = zeros(nvars*rdim*2)
+    for i in range(nvars):
+        if i < nvars /2:
+            x[i*rdim:(i+1)*rdim] = xs[:rdim]
+        else:
+            x[i*rdim:(i+1)*rdim] = xg[rdim:]
+    for i in range(nvars,nvars*2):
+        if i < nvars /2:
+            x[i*rdim:(i+1)*rdim] = xs[:rdim]
+        else:
+            x[i*rdim:(i+1)*rdim] = xg[rdim:]
+            
+    print "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ", x
+    print "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ", x.shape
+    
+    #~ for i in range(1000):
+    for i in range(200):
         #~ x = stepC(x, 0.1,hard, soft=[constraint("ineq",A,b)])
         x = stepC(x, 0.01,hard, soft=[])
     xis = array([[0,0],x[:rdim],x[rdim:]])
-    plotPoints(xis, color = "g")
+    #~ plotPoints(xis, color = "g")
     
+    
+    #retrieve bezier curves
+    x0 = [xs[:rdim]] + [x[i*rdim:(i+1)*rdim] for i in range(nvars)] + [xg[:rdim]]
+    x1 = [xs[rdim:]] + [x[i*rdim:(i+1)*rdim] for i in range(nvars, 2*nvars)] + [xg[rdim:]]
+    
+    print "x0", x0
+    print "x1", x1
     
     #plot bzier
-    b = bezierFromVal([xs[:rdim],x[:rdim],xg[:rdim]])
+    #~ b = bezierFromVal([xs[:rdim],x[:rdim],xg[:rdim]])
+    b = bezierFromVal(x0,nvars+2)
     plotBezier(b, "g", label = "x0", linewidth = 2.0)
     
-    b2 = bezierFromVal([xs[rdim:],x[rdim:],xg[rdim:]])
+    b2 = bezierFromVal(x1,nvars+2)
     plotBezier(b2, "y", label = "x1", linewidth = 2.0)
     
     #~ plotPoints(array([x_end]), color = "r")
@@ -355,7 +422,7 @@ if __name__ == '__main__':
     #~ plotSegment(xis[1:], color = "b")
     plt.legend()
     plt.show()
-    #try to animate this shit
+    #try to animate
     
     import matplotlib.animation as animation
     
@@ -419,6 +486,6 @@ if __name__ == '__main__':
                                   #~ interval=interval, blit=True, init_func=init, repeat = True)
                                   interval=interval, blit=True, init_func=init, repeat = True, repeat_delay = 500)
                                   
-    #~ ani.save('test_bezier.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
+    #~ ani.save('test_bezier_cons.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
                                   
     plt.show()
