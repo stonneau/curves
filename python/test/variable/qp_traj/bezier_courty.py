@@ -192,7 +192,7 @@ def generateBezierSymbolic(numvars, pointId, xsId, xgId):
     symb, pis = symbolicbezier(numvars, pointId)
     return makeTemporalBezierVal(symb, pis, xsId, xgId), pis
 
-def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=10):
+def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=5):
     xs0 = xstart[:rdim]
     xs1 = xstart[rdim:]
     xg0 = xend[:rdim]
@@ -220,17 +220,8 @@ def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=10):
         
         #distance between two variables must be 1
         dist10 = ((eq1-eq0)*(eq1-eq0) - 1)**2
-        
-        #~ print "dist 10 ", dist10
-        #~ gradDist10 = derive_by_array(dist10, (pis0[0], pis1[1]))
         gradDist10 = derive_by_array(dist10, args)
-        #~ print "gradDist10  ", gradDist10
-        #~ print "gradDist10  ", len(gradDist10)
         lambdaGradDist10 = lambdify(pis0+pis1,gradDist10)  
-        #~ print "lambdaGradDist10", gradDist10
-        #~ print "lambdaGradDist10", len(gradDist10)
-        #~ lambdaGradDist10x0 = lambdify(pis0+pis1,gradDistbase[0])  
-        #~ lambdaGradDist10x1 = lambdify(pis0+pis1,gradDistbase[1])  
         
         def fu1(x, pt0t=pt0t, pt1t=pt1t):
             x0 = x[:2*numControlPoints]
@@ -242,28 +233,15 @@ def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=10):
         #~ def gs1(x, lambdaGradDist10x0=lambdaGradDist10x0, lambdaGradDist10x1=lambdaGradDist10x1):
         def gs1(x, lambdaGradDist10=lambdaGradDist10):
             J = zeros((1,2*rdim*numControlPoints))
-            #~ print "DIM ", 2*rdim*numControlPoints
             x0 = x[:2*numControlPoints]
             x1 = x[2*numControlPoints:]
             xvars = tuple([xs0]+[x0[i*rdim:(i+1)*(rdim)] for i in range(numControlPoints)] + [xg0] + 
             [xs1] +[x1[i*rdim:(i+1)*(rdim)] for i in range(numControlPoints)] + [xg1]) 
             
-            #~ print "xvars", xvars
             grad = lambdaGradDist10(*xvars)
-            #~ print "grad", grad
             if grad != 0.:
                 for i, el in enumerate(grad):                
                     J[0,i*rdim:(i+1)*rdim] = el               
-            
-            #~ print "grad s1 ", J
-            #~ grad2 = lambdaGradDist10x0(*xvars)
-            #~ if grad2 != 0.:
-                #~ for i, el in enumerate(grad2):                
-                    #~ J[0,(i+numControlPoints)*rdim:(i+1+numControlPoints)*rdim] = el               
-            #~ J[0,:2*numControlPoints] = lambdaGradDist10x0(*xvars)
-            #~ J[0,2*numControlPoints:] = lambdaGradDist10x1(*xvars)
-            #~ print "gs1", J.shape
-            #~ print "gs1", J
             return J
             
         def fu0(x,  pt0t=pt0t):
@@ -273,17 +251,11 @@ def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=10):
             
         def gs0(x, lambdaGradDistbase=lambdaGradDistbase):
             x0 = x[:2*numControlPoints]
-            #~ J = zeros((1,2*rdim)) 
             J = zeros((1,2*rdim*numControlPoints)) 
-            #~ print "DIM ", 2*rdim*numControlPoints
             xvars = tuple([xs0]+[x0[i*rdim:(i+1)*(rdim)] for i in range(numControlPoints)] + [xg0] )  
             grad = lambdaGradDistbase(*xvars)
             for i, el in enumerate(grad):         
-                #~ print "i",   i*rdim    ,i*rdim * rdim
-                J[0,i*rdim:(i+1)*rdim] = el            
-            #~ print "gs0", J.shape
-            #~ print "gs0", J
-            #~ print "grad s0 ", J
+                J[0,i*rdim:(i+1)*rdim] = el    
             return J
         res += [[fu0,gs0],[fu1,gs1]]
     return res
@@ -297,30 +269,84 @@ def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=10):
 
 ##############" BEZIER STUFF #############
 
+
+def genFJ(cons, sizejac):
+    def F(x):
+        F = zeros(0);
+        for (fi, Ji) in cons:
+            F = hstack([F,fi(x)])
+        return F    
+    def J(x):
+        Jx = zeros((0,sizejac))
+        for (fi, Ji) in cons:
+            Jx = vstack([Jx,Ji(x)])
+        return Jx
+    return F,J
         
-def stepC(x, eps = 1., hard = [constraint("pos")], soft = []):
+def genf_df(F,J):
+    def f(x, Fx=None):
+        if Fx is not None:
+            pass
+        else:
+            Fx = F(x)
+        return 0.5* Fx.T.dot(Fx)
+        
+    def df(x, Fx=None, Jx = None):
+        if Fx is not None:
+            pass
+        else:
+            Fx = F(x)
+        if Jx is not None:
+            pass
+        else:
+            Jx = J(x)
+        return Fx.T.dot(Jx)
+    return f, df
+        
+        
+def dx(f, x):
+    return abs(0-f(x))
+ 
+def backtrack(f, fx, dfx, x, p, tau = 0.5, c = 0.5, alpha = 10.): #p is search direction
+    m = p.T.dot(dfx)
+    t = -c * m
+    while not ((fx) - f(x + alpha * p) >= alpha * t) :
+        alpha = tau * alpha
+    print "alpha", alpha
+    return alpha
+        
+def stepC(x, eps = 1.5, hard = [constraint("pos")], soft = []):
     
     #calling appropriate constraints
     sizejac = x.shape[0]
-    F = zeros(0);  G = zeros(0); J = zeros((0,sizejac)); JG = zeros((0,sizejac))
-    i = -1
-    for (fi, Ji) in hard:
-        i +=1
-        F = hstack([F,fi(x)])
-        J = vstack([J ,Ji(x)])
-    for (gi, Ji) in soft:
-        G  = hstack([G,gi(x)])
-        JG = vstack([JG ,Ji(x)])    
-    #evluation
-    #~ print "F", F
-    print "F", norm(F)
-    nfx = norm(F) + norm(G)
-    if nfx >= 0.0001:    
-        Ji = pinv(J)
-        JiJ = Ji.dot(J)
-        JGi = pinv(JG)
+    F,J  = genFJ(hard, sizejac)
+    G,JG = genFJ(soft, sizejac)
+    
+    Fx = F(x)
+    Jx = J(x)
+    Gx = G(x)
+    JGx = JG(x)
+    
+    f, df = genf_df(F,J)
+    
+    fx  =  f(x, Fx)
+    dfx    = df(x, Fx, Jx)
+    dfxinv = pinv(dfx.reshape((-1,1))).reshape((-1,))
+    
+    eps = backtrack(f, fx, dfx, x, -dfxinv * fx)
+    
+    #~ print "grad_FT_D", norm(F)
+    #~ nfx = norm(Fx) + norm(Gx)
+    #~ if nfx >= 0.0001:   
+    print "fx",  fx
+    if eps >= 0.0001:    
+        Ji = pinv(Jx)
+        JiJ = Ji.dot(Jx)
+        JGi = pinv(JGx)
         idnull = identity(JiJ.shape[0])
-        return x -  eps * pinv(J).dot(F) - eps * (idnull - JiJ).dot(JGi).dot(G)
+        #~ return x -  eps * pinv(J).dot(F) - eps * (idnull - JiJ).dot(JGi).dot(G)
+        #~ print "nx", x -  eps * dfxinv * fx - eps * (idnull - JiJ).dot(JGi).dot(Gx)
+        return x -  eps * dfxinv * fx - eps * (idnull - JiJ).dot(JGi).dot(Gx)
     return x
     
     
@@ -360,7 +386,11 @@ if __name__ == '__main__':
         x = zeros(4); x[:rdim]= [0.,1.2]
         x[rdim:]= [0.,2.]
         for i in range(100):
-            x = stepC(x, 0.1,hard, soft)
+            xn = stepC(x, 0.1,hard, soft)
+            if norm(xn-x) <= 0.0001:
+                print "optimium local"
+                break
+            x = xn
             
         xis = array([[0,0],x[:rdim],x[rdim:]])
             
@@ -375,9 +405,9 @@ if __name__ == '__main__':
                      
     plt.show()
     
-    nvars = 3
-    #~ hard = bezier2Dist(xs,xg,nvars) + [constraint("ineq",A,b)]
-    hard = bezier2Dist(xs,xg,nvars)
+    nvars = 1
+    hard = bezier2Dist(xs,xg,nvars) + [constraint("ineq",A,b)]
+    #~ hard = bezier2Dist(xs,xg,nvars)
     #~ x = xs[:]
     x = zeros(nvars*rdim*2)
     for i in range(nvars):
@@ -395,11 +425,16 @@ if __name__ == '__main__':
     print "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ", x.shape
     
     #~ for i in range(1000):
-    for i in range(200):
-        #~ x = stepC(x, 0.1,hard, soft=[constraint("ineq",A,b)])
-        x = stepC(x, 0.01,hard, soft=[])
+    for i in range(500):
+        xn = stepC(x, 0.1,hard, soft=[constraint("ineq",A,b)])
+        #~ x = stepC(x, 0.01,hard, soft=[])
+        #~ xn = stepC(x, 0.1,hard, soft=[])
+        if norm(xn-x) <= 0.0001:
+            print "optimium local"
+            break
+        x = xn
     xis = array([[0,0],x[:rdim],x[rdim:]])
-    #~ plotPoints(xis, color = "g")
+    plotPoints(xis, color = "g")
     
     
     #retrieve bezier curves
@@ -418,7 +453,8 @@ if __name__ == '__main__':
     plotBezier(b2, "y", label = "x1", linewidth = 2.0)
     
     #~ plotPoints(array([x_end]), color = "r")
-    #~ plotSegment(xis[:2], color = "b")
+    xis = array([[0.,0.5],[0.5,1.]])
+    plotSegment(xis, color = "y")
     #~ plotSegment(xis[1:], color = "b")
     plt.legend()
     plt.show()
