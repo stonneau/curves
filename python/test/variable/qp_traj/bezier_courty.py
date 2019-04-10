@@ -37,14 +37,21 @@ def gen_target(x_end):
     return f
 
 # A x <= b
+
+def ineqf(A,b,x):
+    blen = b.shape[0]
+    lenx = (int)(x.shape[0] / rdim)
+    res = zeros(blen * lenx)
+    for i in range(lenx):
+        val = A.dot(x[rdim*i:rdim*(i+1)]) - b
+        res[i*blen:(i+1)] = np.where(val>0., val, 0.)
+    return res
+
 def gen_ineq(A,b):
     def f(x):
-        x0 = x[:rdim]
-        x1 = x[rdim:]
-        res = zeros(rdim)
-        res[0] = max(A.dot(x0) - b,0.)
-        res[1] = max(A.dot(x1) - b,0.)
-        return res
+        return ineqf(A,b,x)
+        #~ res = ineqf(A,b,x)
+        #~ return res.T.dot(res)
     return f
 
 #distance from base to joint 1 
@@ -94,15 +101,30 @@ def Jpositions():
     
     
 def Jineq(A,b):
+    
+    blen = b.shape[0]
     Arows = A.shape[0]
-    fineq  = gen_ineq(A, b)
+    blen = b.shape[0]
+    #~ fineq  = gen_ineq(A, b)
     def f(x):
-        fin = fineq(x)
-        J = zeros((2*Arows,2*rdim))
-        if(fin[0]>0.): 
-            J[0:Arows,:2] = A[:]
-        if(fin[1]>0.):
-            J[Arows: ,2:] = A[:]
+        #~ ineqf(A,b,x)
+        lenx = x.shape[0]
+        lenxrdim = (int)(lenx / rdim)
+        #~ fin = fineq(x)
+        #~ fin = ineqf(A,b,x)
+        J = zeros((lenxrdim*Arows,lenx))
+        for i in range(lenxrdim):
+            xi = x[rdim*i:rdim*(i+1)]
+            fval = ineqf(A,b,x)
+            if fval.T.dot(fval) > 0:
+            #~ if residual > 0.:
+                 J[i*Arows,i*rdim:(i+1)*rdim] = A[:]
+            #~ val = A.dot(x[rdim*i:rdim*(i+1)]) - b
+            #~ res[i*blen:(i+1)] = np.where(val>0., val, 0.)
+                #~ if(fin[0]>0.): 
+                    #~ J[0:Arows,:2] = A[:]
+                #~ if(fin[1]>0.):
+                    #~ J[Arows: ,2:] = A[:]
         return J
     return f
   
@@ -192,7 +214,7 @@ def generateBezierSymbolic(numvars, pointId, xsId, xgId):
     symb, pis = symbolicbezier(numvars, pointId)
     return makeTemporalBezierVal(symb, pis, xsId, xgId), pis
 
-def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=5):
+def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=10):
     xs0 = xstart[:rdim]
     xs1 = xstart[rdim:]
     xg0 = xend[:rdim]
@@ -376,7 +398,7 @@ if __name__ == '__main__':
     b = 1.26
     
     A = array([ 0.707, -0.707]); A = A.reshape((1,2))
-    b = -0.354
+    b = array([-0.354])
     
     def ik(x_end):        
         hard = [constraint("pos")]
@@ -405,9 +427,9 @@ if __name__ == '__main__':
                      
     plt.show()
     
-    nvars = 1
-    hard = bezier2Dist(xs,xg,nvars) + [constraint("ineq",A,b)]
-    #~ hard = bezier2Dist(xs,xg,nvars)
+    nvars = 3
+    #~ hard = bezier2Dist(xs,xg,nvars) + [constraint("ineq",A,b)]
+    hard = bezier2Dist(xs,xg,nvars)
     #~ x = xs[:]
     x = zeros(nvars*rdim*2)
     for i in range(nvars):
@@ -427,14 +449,17 @@ if __name__ == '__main__':
     #~ for i in range(1000):
     for i in range(500):
         xn = stepC(x, 0.1,hard, soft=[constraint("ineq",A,b)])
-        #~ x = stepC(x, 0.01,hard, soft=[])
-        #~ xn = stepC(x, 0.1,hard, soft=[])
+        x = stepC(x, 0.01,hard, soft=[])
         if norm(xn-x) <= 0.0001:
             print "optimium local"
             break
         x = xn
-    xis = array([[0,0],x[:rdim],x[rdim:]])
-    plotPoints(xis, color = "g")
+        
+        
+    xis = [x[i*rdim:(i+1)*rdim] for i in range(nvars)] + [x[i*rdim:(i+1)*rdim] for i in range(nvars, 2*nvars)]
+    #~ x1 = [xs[rdim:]] + [x[i*rdim:(i+1)*rdim] for i in range(nvars, 2*nvars)] + [xg[rdim:]]
+    #~ xis = array([[0,0],x[:rdim],x[rdim:]])
+    plotPoints(array(xis), color = "g")
     
     
     #retrieve bezier curves
@@ -453,7 +478,7 @@ if __name__ == '__main__':
     plotBezier(b2, "y", label = "x1", linewidth = 2.0)
     
     #~ plotPoints(array([x_end]), color = "r")
-    xis = array([[0.,0.5],[0.5,1.]])
+    xis = array([[0.,0.48],[2.,2.48]])
     plotSegment(xis, color = "y")
     #~ plotSegment(xis[1:], color = "b")
     plt.legend()
