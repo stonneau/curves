@@ -11,7 +11,7 @@ degree = 5
 n = degree
 nvars = degree+1
 dim = 3
-rdim = 2
+rdim = 3
 
 #try to solve distance based ik for a simple manipulator with 2 DOF, each with length 1
 
@@ -82,8 +82,8 @@ def positions():
 def Jpositions():
     def f(x):
         J = zeros((2,2*rdim))
-        x0 = x[:2]
-        x1 = x[2:]
+        x0 = x[:rdim]
+        x1 = x[rdim:]
         x1mx0 = (x1-x0)
         x0mx1 = (x0-x1)    
         df1dx0 = 4*x0*(x0.T.dot(x0) - 1)
@@ -92,10 +92,10 @@ def Jpositions():
         df2dx0 = 4*(x0mx1)*(x1mx0.T.dot(x1mx0) -1)
         df2dx1 = 4*(x1mx0)*(x1mx0.T.dot(x1mx0) -1)
         
-        J[0,:2] = df1dx0
-        J[0,2:] = df1dx1
-        J[1,:2] = df2dx0
-        J[1,2:] = df2dx1
+        J[0,:rdim] = df1dx0
+        J[0,rdim:] = df1dx1
+        J[1,:rdim] = df2dx0
+        J[1,rdim:] = df2dx1
         return J
     return f
     
@@ -133,7 +133,7 @@ def Jineq(A,b):
 def Jtarget(x_end):  
     def fu(x):
         J = zeros((1,2*rdim)) 
-        J[0,2:] = 2*(x[2:]-x_end) 
+        J[0,rdim:] = 2*(x[rdim:]-x_end) 
         return J
     return fu
     
@@ -205,7 +205,9 @@ def makeTemporalBezierVal(symBezier, pis, xsId, xgId):
         evalt = fsymbt(ti) #eval delta t and exponents 
         fsymb =  lambdify(pis,evalt)  
         def fu(x, fsymb = fsymb):
-            xvars = tuple([xsId]+[x[i*rdim:(i+1)*(rdim)] for i in range(len(pis[1:-1]))] +[xgId])            
+            #~ print "x", x
+            xvars = tuple([xsId]+[x[i*rdim:(i+1)*(rdim)] for i in range(len(pis[1:-1]))] +[xgId])       
+            #~ print "xvaras ",    xvars  
             return fsymb(*xvars)
         return fu, evalt
     return ft
@@ -246,8 +248,8 @@ def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=10):
         lambdaGradDist10 = lambdify(pis0+pis1,gradDist10)  
         
         def fu1(x, pt0t=pt0t, pt1t=pt1t):
-            x0 = x[:2*numControlPoints]
-            x1 = x[2*numControlPoints:]
+            x0 = x[:rdim*numControlPoints]
+            x1 = x[rdim*numControlPoints:]
             pt0 = pt0t(x0)
             pt1 = pt1t(x1)
             return ( norm(pt1-pt0)**2- 1)**2
@@ -255,8 +257,8 @@ def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=10):
         #~ def gs1(x, lambdaGradDist10x0=lambdaGradDist10x0, lambdaGradDist10x1=lambdaGradDist10x1):
         def gs1(x, lambdaGradDist10=lambdaGradDist10):
             J = zeros((1,2*rdim*numControlPoints))
-            x0 = x[:2*numControlPoints]
-            x1 = x[2*numControlPoints:]
+            x0 = x[:rdim*numControlPoints]
+            x1 = x[rdim*numControlPoints:]
             xvars = tuple([xs0]+[x0[i*rdim:(i+1)*(rdim)] for i in range(numControlPoints)] + [xg0] + 
             [xs1] +[x1[i*rdim:(i+1)*(rdim)] for i in range(numControlPoints)] + [xg1]) 
             
@@ -267,12 +269,12 @@ def bezier2Dist(xstart, xend, numControlPoints = 1, nsteps=10):
             return J
             
         def fu0(x,  pt0t=pt0t):
-            x0 = x[:2*numControlPoints]
+            x0 = x[:rdim*numControlPoints]
             pt0 = pt0 = pt0t(x0)
             return (pt0.T.dot(pt0) -1)**2
             
         def gs0(x, lambdaGradDistbase=lambdaGradDistbase):
-            x0 = x[:2*numControlPoints]
+            x0 = x[:rdim*numControlPoints]
             J = zeros((1,2*rdim*numControlPoints)) 
             xvars = tuple([xs0]+[x0[i*rdim:(i+1)*(rdim)] for i in range(numControlPoints)] + [xg0] )  
             grad = lambdaGradDistbase(*xvars)
@@ -334,7 +336,7 @@ def backtrack(f, fx, dfx, x, p, tau = 0.5, c = 0.5, alpha = 10.): #p is search d
     t = -c * m
     while not ((fx) - f(x + alpha * p) >= alpha * t) :
         alpha = tau * alpha
-    print "alpha", alpha
+    #~ print "alpha", alpha
     return alpha
         
 def stepC(x, eps = 1.5, hard = [constraint("pos")], soft = []):
@@ -386,11 +388,15 @@ from hpp_spline import bezier
 from  cord_methods import *
 from  plot_cord import *
 
+
+
 def bezierFromVal(xis, numvars = 3):
     wps = zeros((len(xis),3))
     for i in range(numvars):
         wps[i,:rdim] = array(xis[i])
     return bezier(wps.transpose(), 1.)
+
+from mpl_toolkits.mplot3d import Axes3D
 
 if __name__ == '__main__':
     A = zeros(2); A[1] = 1
@@ -400,20 +406,24 @@ if __name__ == '__main__':
     #~ A = array([ 0.707, -0.707]); A = A.reshape((1,2))
     #~ b = array([-0.354])
     
-    A = array([ 0.97 ,  0.243]); A = A.reshape((1,2))
+    A = array([ 0.97 ,  0.243,0.]); A = A.reshape((1,rdim))
     b = array([1.213])
     #~ b = array([1.019])
     
     #~ (array([ 0.97 ,  0.243, -0.   ]), array([1.019]))
-
+    
+    toggle3D()
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')    
+    setFigure(ax)
     
     def ik(x_end):        
         hard = [constraint("pos")]
         #~ soft = [constraint("target",x_end),constraint("ineq",A,b)]
         soft = [constraint("target",x_end)]
         
-        x = zeros(4); x[:rdim]= [0.,1.2]
-        x[rdim:]= [0.,2.]
+        x = zeros(rdim*2); x[:rdim]= [0.,1.2,0.]
+        x[rdim:]= [0.,2.,0.]
         for i in range(100):
             xn = stepC(x, 0.1,hard, soft)
             if norm(xn-x) <= 0.0001:
@@ -421,7 +431,7 @@ if __name__ == '__main__':
                 break
             x = xn
             
-        xis = array([[0,0],x[:rdim],x[rdim:]])
+        xis = array([[0,0,0.],x[:rdim],x[rdim:]])
             
         plotPoints(xis, color = "b")
         plotPoints(array([x_end]), color = "r")
@@ -429,12 +439,13 @@ if __name__ == '__main__':
         plotSegment(xis[1:], color = "b")
         return x
     
-    xs = ik([1.2,0.2])
-    xg = ik([1.,1.])
+    xs = ik([1.2,0.2,0.])
+    xg = ik([1.,1.,0.])
                      
     plt.show()
     
-    nvars = 10
+    
+    nvars = 4
     hard = bezier2Dist(xs,xg,nvars) + [constraint("ineq",A,b)]
     #~ hard = bezier2Dist(xs,xg,nvars)
     #~ x = xs[:]
@@ -454,9 +465,10 @@ if __name__ == '__main__':
     print "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ", x.shape
     
     #~ for i in range(1000):
+    print "x", x
     for i in range(500):
-        #~ xn = stepC(x, 0.1,hard, soft=[constraint("ineq",A,b)])
-        xn = stepC(x, 0.1,hard, soft=[])
+        xn = stepC(x, 0.1,hard, soft=[constraint("ineq",A,b)])
+        #~ xn = stepC(x, 0.1,hard, soft=[])
         #~ x = stepC(x, 0.01,hard, soft=[])
         if norm(xn-x) <= 0.0001:
             print "optimium local"
@@ -467,6 +479,10 @@ if __name__ == '__main__':
     xis = [x[i*rdim:(i+1)*rdim] for i in range(nvars)] + [x[i*rdim:(i+1)*rdim] for i in range(nvars, 2*nvars)]
     #~ x1 = [xs[rdim:]] + [x[i*rdim:(i+1)*rdim] for i in range(nvars, 2*nvars)] + [xg[rdim:]]
     #~ xis = array([[0,0],x[:rdim],x[rdim:]])
+    
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111, projection='3d')    
+    setFigure(ax1)
     plotPoints(array(xis), color = "g")
     
     
@@ -482,11 +498,13 @@ if __name__ == '__main__':
     b = bezierFromVal(x0,nvars+2)
     plotBezier(b, "g", label = "x0", linewidth = 2.0)
     
+    #~ plt.show()
+    
     b2 = bezierFromVal(x1,nvars+2)
     plotBezier(b2, "y", label = "x1", linewidth = 2.0)
     
     #~ plotPoints(array([x_end]), color = "r")
-    xis = array([[1.2,0.2],[1.,1.]])
+    xis = array([[1.2,0.2,0.],[1.,1.,0.]])
     plotSegment(xis, color = "y")
     #~ plotSegment(xis[1:], color = "b")
     plt.legend()
@@ -557,6 +575,6 @@ if __name__ == '__main__':
                                   #~ interval=interval, blit=True, init_func=init, repeat = True)
                                   interval=interval, blit=True, init_func=init, repeat = True, repeat_delay = 500)
                                   
-    ani.save('test_bezier_cons.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
+    #~ ani.save('test_bezier_cons.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
                                   
     plt.show()
