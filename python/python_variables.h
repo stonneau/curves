@@ -12,9 +12,8 @@
 namespace curves
 {
   static const int dim = 3;
-  typedef curves::linear_variable<dim, real> linear_variable_3_t;
-  typedef curves::variables<linear_variable_3_t> variables_3_t;
-  typedef curves::bezier_curve  <real, real, true, variables_3_t> bezier_linear_variable_t;
+  typedef linear_variable<dim, real> linear_variable_3_t;
+  typedef bezier_curve  <real, real, true, linear_variable_3_t> bezier_linear_variable_t;
 
   /*linear variable control points*/
   bezier_linear_variable_t* wrapBezierLinearConstructor(const point_list_t& matrices, const point_list_t& vectors);
@@ -25,14 +24,15 @@ namespace curves
   typedef std::pair<Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic>,
   Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> > linear_points_t;
 
-  struct LinearControlPointsHolder
+  struct matrix_pair
   {
-    linear_points_t res;
-    Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> A() {return res.first;}
-    Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> b() {return res.second;}
+      linear_points_t res;
+      Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> A() {return res.first;}
+      Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic> b() {return res.second;}
   };
 
-  LinearControlPointsHolder* wayPointsToLists(const bezier_linear_variable_t& self);
+
+  matrix_pair* wayPointsToLists(const bezier_linear_variable_t& self);
 
   struct LinearBezierVector
   {
@@ -46,7 +46,7 @@ namespace curves
   };
 
   // does not include end time
-  LinearBezierVector* split(const bezier_linear_variable_t& self,  const vectorX_t& times);
+  LinearBezierVector* split_py(const bezier_linear_variable_t& self,  const vectorX_t& times);
 } //namespace curve.
 
 
